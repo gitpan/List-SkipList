@@ -27,14 +27,10 @@ DESCRIPTION
     More information is available in the module documentation.
 
 REVISION HISTORY
-    Changes since v0.10:
+    Changes since v0.12:
 
-    0.12  Wed Nov 19 2003
-	- added validate_key and validate_node methods to Node
-
-    0.11  Sun Nov 16 2003
-	- modified test script to better check next_key function
-	- bug fix: next_key did not check that $last_key existed
+    0.13  Wed Nov 19 2003
+	- added call to validate_key in key_cmp in Node
 
 CAVEATS
     This is a prototype module and may contain bugs.

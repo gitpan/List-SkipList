@@ -108,6 +108,7 @@ sub key_cmp {
   my $left  = $self->key;
   my $right = shift;
 
+  assert( $self->validate_key( $right ) ), if DEBUG;
   unless (defined $left) { return -1; }
 
   return ($left cmp $right);
@@ -139,7 +140,7 @@ use 5.006;
 use strict;
 use warnings;
 
-our $VERSION = '0.12';
+our $VERSION = '0.13';
 
 use Carp;
 use Carp::Assert;

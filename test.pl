@@ -31,7 +31,7 @@ package main;
 
 use Test;
 BEGIN { plan tests => 173 };
-use List::SkipList 0.12;
+use List::SkipList 0.13;
 ok(1); # If we made it this far, we're ok.
 
 

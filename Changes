@@ -1,5 +1,8 @@
 Revision history for Perl extension List::SkipList.
 
+0.13  Wed Nov 19 2003
+	- added call to validate_key in key_cmp in Node
+
 0.12  Wed Nov 19 2003
 	- added validate_key and validate_node methods to Node
 
