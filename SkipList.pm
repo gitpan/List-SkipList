@@ -13,9 +13,9 @@ use Carp::Assert;
 sub new {
   my $class = shift;
   my $self  = {
-    HEADER => [ ],
-    KEY    => undef,
-    VALUE  => undef,
+    HEADER => [ ],   # Pointers to next nodes
+    KEY    => undef, # Key
+    VALUE  => undef, # Value
   };
   bless $self, $class;
 
@@ -140,8 +140,9 @@ use 5.006;
 use strict;
 use warnings;
 
-our $VERSION = '0.21';
+our $VERSION = '0.30';
 
+use AutoLoader 'AUTOLOAD';
 use Carp;
 use Carp::Assert;
 
@@ -160,6 +161,8 @@ sub new {
     SIZE      => undef,
     MAXLEVEL  => MAX_LEVEL,
     P         => DEF_P,
+    LASTNODE  => undef,                  # node with greatest key
+    LASTKEY   => undef,                  # last key used by next_key
   };
 
   bless $self, $class;
@@ -196,6 +199,12 @@ sub _node_class
     return $self->{NODECLASS};
   }
 
+sub reset {
+  my $self = shift;
+  assert( UNIVERSAL::isa($self, "List::SkipList") ), if DEBUG;
+  $self->{LASTKEY}  = undef;
+}
+
 sub clear {
   my $self = shift;
   assert( UNIVERSAL::isa($self, "List::SkipList") ), if DEBUG;
@@ -207,8 +216,11 @@ sub clear {
 
   assert( UNIVERSAL::isa($list, "List::SkipList::Node") ), if DEBUG;
 
-  $self->{LIST} = $list;
-  $self->{SIZE} = 0;
+  $self->{LIST}     = $list;
+  $self->{SIZE}     = 0;
+  $self->{LASTNODE} = undef;
+
+  $self->reset;
 }
 
 sub _set_max_level {
@@ -263,7 +275,6 @@ sub level {
   return $self->list->level;
 }
 
-
 sub _random_level {
   no integer;
 
@@ -279,7 +290,6 @@ sub _random_level {
 
   return $level;
 }
-
 
 sub _search {
   my $self = shift;
@@ -369,11 +379,16 @@ sub insert {
 	$update_ref->[$i]->forward($i,$node);
       }
 
+      unless (defined $node->forward(0)) {
+	$self->{LASTNODE} = $node;
+      }
+
       $self->{SIZE}++;
+      $self->reset;
     }
 
+    return $update_ref;
   }
-
 }
 
 sub delete {
@@ -415,6 +430,8 @@ sub delete {
 
     # it doesn't seem to be a wise idea to return a search finger for
     # deletions without further analysis
+
+    $self->reset;
 
     return $value;
 
@@ -461,14 +478,26 @@ sub find {
   }
 }
 
+sub last_key {
+  my $self = shift;
+  assert( UNIVERSAL::isa($self, "List::SkipList") ), if DEBUG;
+
+  if (defined $self->{LASTKEY}) {
+    return (wantarray) ?
+      @{$self->{LASTKEY}} : $self->{LASTKEY}->[0];
+  } else {
+    return;
+  }
+}
+
 sub first_key {
   my $self = shift;
   assert( UNIVERSAL::isa($self, "List::SkipList") ), if DEBUG;
 
   my $list = $self->list;
   if (defined $list->forward(0)) {
-    return (wantarray) ?
-      ($list->forward(0)->key, $list->header) : $list->forward(0)->key;
+    $self->{LASTKEY} = [$list->forward(0)->key, scalar $list->header];
+    $self->last_key;
   } else {
     return;
   }
@@ -479,8 +508,11 @@ sub next_key {
   assert( UNIVERSAL::isa($self, "List::SkipList") ), if DEBUG;
 
   my $last_key = shift;
-
   my $finger = shift;
+
+  unless (defined $last_key) {
+    ($last_key, $finger) = @{$self->{LASTKEY}};
+  }
 
   if (defined $finger) {
     assert( UNIVERSAL::isa($finger, "ARRAY") ), if DEBUG;
@@ -490,8 +522,8 @@ sub next_key {
     my ($list, $update_ref) = $self->_search($last_key, $finger);
     if ($list->key_cmp($last_key) == 0) {
       if (defined $list->forward(0)) {
-	return (wantarray) ?
-	  ($list->forward(0)->key, $update_ref) : $list->forward(0)->key;
+	$self->{LASTKEY} = [$list->forward(0)->key, scalar $update_ref];
+	$self->last_key;
       } else {
 	return;
       }
@@ -503,12 +535,210 @@ sub next_key {
   }
 }
 
+# We could add the ability to tie hashes to skip lists, but it would
+# complicate how the autoloading features are set up.  So this might
+# be implemented in another module.
+
+BEGIN
+  {
+    # make aliases to methods...
+    no strict;
+    *TIEHASH = \&new;
+    *STORE   = \&insert;
+    *FETCH   = \&find;
+    *EXISTS  = \&exists;
+    *CLEAR   = \*clear;
+    *DELETE  = \*delete;
+    *FIRSTKEY = \*first_key;
+    *NEXTKEY = \*next_key;
+  }
+
 1;
 
 __END__
 
+sub _first_node { # actually this is the second node
+  my $self = shift;
+  assert( UNIVERSAL::isa($self, "List::SkipList") ), if DEBUG;
 
-sub debug {
+  my $list = $self->list;
+  if (defined $list->forward(0)) {
+    return ($list->forward(0), scalar $list->header);
+  } else {
+    return;
+  }
+}
+
+sub least {
+  my $self = shift;
+  assert( UNIVERSAL::isa($self, "List::SkipList") ), if DEBUG;
+
+  my ($node, $finger) = $self->_first_node;
+
+  if (defined $node) {
+    return ($node->key, $node->value);
+  } else {
+    return;
+  }
+}
+
+sub greatest {
+  my $self = shift;
+  assert( UNIVERSAL::isa($self, "List::SkipList") ), if DEBUG;
+
+  my $node = $self->{LASTNODE};
+  if (defined $node) {
+    return ($node->key, $node->value);
+  } else {
+    return;
+  }
+}
+
+sub keys {
+  my $self = shift;
+  assert( UNIVERSAL::isa($self, "List::SkipList") ), if DEBUG;
+
+  my @keys = ();
+
+  my ($key, $finger) = $self->first_key;
+
+  while (defined $key) {
+    push @keys, $key;
+    $key = $self->next_key($key, $finger);
+  }
+
+  return @keys;
+}
+
+
+sub values {
+  my $self = shift;
+  assert( UNIVERSAL::isa($self, "List::SkipList") ), if DEBUG;
+
+  my @values = ();
+
+  my ($key, $finger) = $self->first_key;
+
+  while (defined $key) {
+    push @values, scalar $self->find($key, $finger);
+    ($key, $finger) = $self->next_key($key, $finger);
+  }
+
+  return @values;
+}
+
+sub copy {
+  my $self = shift;
+  assert( UNIVERSAL::isa($self, "List::SkipList") ), if DEBUG;
+
+  my $list = new List::SkipList(
+    max_level  => $self->max_level,
+    p          => $self->p,
+    node_class => $self->_node_class,
+  );
+
+  my ($key, $finger) = $self->first_key;
+
+  while (defined $key) {
+    $list->insert( $key, $self->find($key, $finger) );
+    ($key, $finger) = $self->next_key($key, $finger);
+  }
+
+  return $list;
+}
+
+sub merge {
+
+  my $list1 = shift;
+  assert( UNIVERSAL::isa($list1, "List::SkipList") ), if DEBUG;
+
+  my $list2 = shift;
+  assert( UNIVERSAL::isa($list2, "List::SkipList") ), if DEBUG;
+
+  my ($node1, $finger1) = $list1->_first_node;
+  my ($node2, $finger2) = $list2->_first_node;
+
+  assert( ref($node1) eq ref($node2) ), if DEBUG;
+  assert( ref($finger1) eq "ARRAY" ), if DEBUG;
+
+  while ((defined $node1) || (defined $node2)) {
+
+    my $cmp = (defined $node1) ? (
+     (defined $node2) ? $node1->key_cmp( $node2->key ) : 1 ) : -1;
+    
+    if ($cmp < 0) {                     # key1 < key2
+      if (defined $node1) {
+	$finger1 = $list1->insert( $node1->key, $node1->value, $finger1 );
+	$node1 = $node1->forward(0);
+      } else {
+	$finger1 = $list1->insert( $node2->key, $node2->value, $finger1 );
+	$node2 = $node2->forward(0);
+      }
+    } elsif ($cmp > 0) {                # key1 > key2
+      if (defined $node2) {
+	$finger1 = $list1->insert( $node2->key, $node2->value, $finger1 );
+	$node2 = $node2->forward(0);
+      } else {
+	$finger1 = $list1->insert( $node1->key, $node1->value, $finger1 );
+	$node1 = $node1->forward(0);
+      }
+    } else {                            # key1 = key2
+      $node1 = $node1->forward(0), if defined $node1;
+      $node2 = $node2->forward(0), if defined $node2;
+    }
+  }
+}
+
+sub append {
+  my $list1 = shift;
+  assert( UNIVERSAL::isa($list1, "List::SkipList") ), if DEBUG;
+
+  my $list2 = shift;
+
+  unless (defined $list2) { return; }
+  assert( UNIVERSAL::isa($list2, "List::SkipList") ), if DEBUG;
+
+  my $node = $list1->{LASTNODE};
+  if (defined $node) {
+
+    my ($next, $finger) = $list2->_first_node;
+
+    assert( $node->key_cmp( $next->key ) < 0 ), if DEBUG;
+
+    if ($list1->level > $list2->level) {
+
+      if ($list1->level < $list1->max_level) {
+	$list1->list->forward($list1->level, $next);
+      } else {
+	my $i = $list1->level -1;
+	my $x = $list1->list->forward($i);
+	while (defined $x->forward($i)) {
+	  $x = $x->forward($i);
+	}
+	$x->forward($i, $next);
+      }
+
+    } else {
+      for (my $i=0; $i<$node->level; $i++) {
+	$node->forward($i, $next );
+      }
+      for (my $i=$list1->level; $i<$list2->level; $i++) {
+	$list1->list->forward($i, $next);
+      }
+    }
+
+    $list1->{SIZE}    += $list2->size;
+    $list1->{LASTNODE} = $list2->{LASTNODE};
+
+  } else {
+    $list1->{LIST}     = $list2->list;
+    $list1->{SIZE}     = $list2->size;
+    $list1->{LASTNODE} = $list2->{LASTNODE};
+  }
+
+}
+
+sub _debug {
 
   my $self = shift;
   assert( UNIVERSAL::isa($self, "List::SkipList") ), if DEBUG;
@@ -672,11 +902,14 @@ L<search finger|About Search Fingers>:
 
   ($key, $finger) = $list->first_key;
 
+A call to C<first_key> implicitly calls C<reset>.
+
 =item next_key
 
   $key = $list->next_key( $last_key );
 
-Returns the key following the previous key.
+Returns the key following the previous key.  List nodes are always
+maintained in sorted order.
 
 Search fingers may also be used to improve performance:
 
@@ -686,6 +919,32 @@ If called in a list context, will return a
 L<search finger|About Search Fingers>:
 
   ($key, $finger) = $list->next_key( $last_key, $finger );
+
+If no arguments are called,
+
+  $key = $list->next_key;
+
+then the value of C<last_key> is assumed:
+
+  $key = $list->next_key( $list->last_key );
+
+=item last_key
+
+  $key = $list->last_key;
+
+  ($key, $finger) = $list->last_key;
+
+Returns the last key or the last key and finger returned by a call to
+C<first_key> or C<next_key>.
+
+Deletions and inserts will invalidate the C<last_key> value, although
+they may not reset the last key.
+
+=item reset
+
+  $list->reset;
+
+Resets the C<last_key> to C<undef>. 
 
 =item delete
 
@@ -712,6 +971,85 @@ Erases existing nodes and resets the list.
   $size = $list->size;
 
 Returns the number of nodes in the list.
+
+=item copy
+
+  $list2 = $list1->copy;
+
+Makes a copy of a list.  The L<p>, L<max_level> and L<node class|_node_class>
+are copied, although the exact structure of node levels is not copied.
+
+This is an autoloading method.
+
+=item merge
+
+  $list1->merge( $list2 );
+
+Merges two lists.  If both lists share the same key, then the valie
+from C<$list1> will be used.
+
+Both lists should have the same L<node class|_node_class>.
+
+This is an autoloading method.
+
+=item append
+
+  $list1->append( $list2 );
+
+Appends C<$list2> after C<$list1>.  The last key of C<$list1> must be less
+than the first key of C<$list2>.
+
+Both lists should have the same L<node class|_node_class>.
+
+This method affects both lists.  The L<header> of the last node of
+C<$list1> points to the first node of C<$list2>, so changes to one
+list may affect the other list.
+
+If you do not want this entanglement, use the C<merge> or C<copy>
+methods instead:
+
+  $list1->merge( $list2 );
+  
+or
+
+  $list1->append( $list2->copy );
+
+This is an autoloading method.
+
+=item least
+
+  ($key, $value) = $list->least;
+
+Returns the least key and value in the list, or C<undef> if the list
+is empty.
+
+This is an autoloading method.
+
+=item greatest
+
+  ($key, $value) = $list->greatest;
+
+Returns the greatest key and value in the list, or C<undef> if the list
+is empty.
+
+This is an autoloading method.
+
+=item keys
+
+  @keys = $list->keys;
+
+Returns a list of keys (in sorted order).
+
+This is an autoloading method.
+
+=item values
+
+  @values = $list->values;
+
+Returns a list of values (corresponding to the keys returned by the
+C<keys> method).
+
+This is an autoloading method.
 
 =back
 
@@ -770,6 +1108,15 @@ L<List::SkipList::Node> (See L<below|Node Methods>.)
 
 The key and value for this node are undefined.
 
+=item _first_node
+
+  ($node, $finger) = _first_node;
+
+Returns the first node with a key (the second node) in a list and the
+finger.  This is used by the C<merge> method.
+
+This is an autoloading method.
+
 =item _node_class
 
   $node_class_name = $list->_node_class;
@@ -785,6 +1132,13 @@ C<List::SkipList::Node>, which is discussed below.
 
 These methods are used only during initialization of the object.
 I<Do not call these methods after the object has been created!>
+
+=item _debug
+
+  $list->_debug;
+
+Used for debugging skip lists by developer.  The output of this
+function is subject to change.
 
 =back
 
@@ -896,6 +1250,20 @@ Returns the number of levels in the node.
 
 =back
 
+=head1 SPECIAL FEATURES
+
+=head2 Tied Hashes
+
+Hashes can be tied to C<List::SkipList> objects:
+
+  tie %hash, 'List::SkipList';
+  $hash{'foo'} = 'bar';
+
+  $list = tied %hash;
+  print $list->find('foo'); # returns bar
+
+See the L<perltie> manpage for more information.
+
 =head2 Customizing the Node Class
 
 The default node may not handle specialized data types.  To define
@@ -970,7 +1338,6 @@ key with the same values, we save the results in a hash:
     return $self->{MEMORY}->{$key};
   }
 
-
 Note that the above example is worthwhile if hashing the key is less
 expensive than comparing two keys.
 
@@ -1000,21 +1367,41 @@ however, it may fail:
 
 Therefore, use search fingers with caution.
 
+One useful feature of fingers is with enumerating all keys using the
+C<first_key> and C<next_key> methods:
+
+  ($key, $finger) = $list->first_key;
+
+  while (defined $key) {
+    ...
+    ($key, $finger) = $list->next_key($key, $finger);
+  }
+
+See also the C<keys> method for generating a list of keys.
+
+=head2 Similarities to Tree Classes
+
+This module intentionally has a subset of the interface in the
+L<Tree:Base> and other tree-type data structure modules, since skip
+lists can be used in place of trees.
+
+Because pointers only point forward, there is no C<prev> method to
+point to the previous key.
+
+Some of these methods (least, greatest) are autoloading because they
+are not commonly used.
+
 =head1 TODO
 
 The following features may be added in future versions:
 
 =over
 
-=item Merging lists
-
 =item Accessing list nodes by index number as well as key
 
 =item Splitting lists
 
-=item Cloning or copying lists
-
-=item Autoloading lesser-used methods
+=item Tie hashes to Skip Lists
 
 =back
 
@@ -1052,8 +1439,7 @@ See the article I<A Skip List Cookbook> (William Pugh, 1989), or
 similar ones by the author at L<http://www.cs.umd.edu/~pugh/> which
 discuss skip lists.
 
-This module intentionally has a superficial subset of the interface in
-the L<Tree:Base> module, since skip lists can be used instead of
-trees.
+If you need a keyed list that preserves the order or insertion rather
+than sorting keys, see L<List::Indexed>.
 
 =cut

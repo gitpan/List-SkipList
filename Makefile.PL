@@ -5,6 +5,7 @@ WriteMakefile(
     'NAME'		=> 'List::SkipList',
     'VERSION_FROM'	=> 'SkipList.pm', # finds $VERSION
     'PREREQ_PM'		=> {
+      'AutoLoader'   => 0,
       'Carp'         => 0,
       'Carp::Assert' => 0.17,
       'warnings'     => 0,
