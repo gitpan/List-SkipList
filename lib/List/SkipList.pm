@@ -120,7 +120,7 @@ use 5.006;
 use strict;
 use warnings::register __PACKAGE__;
 
-our $VERSION = '0.72';
+our $VERSION = '0.73';
 # $VERSION = eval $VERSION;
 
 use AutoLoader qw( AUTOLOAD );

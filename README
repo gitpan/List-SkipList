@@ -81,6 +81,9 @@ DESCRIPTION
 REVISION HISTORY
     Changes since v0.71:
 
+    0.73    Mon Jul 26 2004
+	- rebuilt distribution with proper META.yml
+
     0.72    Wed Jun 30 2004
 	- removed List::SkipList::Null type and $NULL variable
 	- moved Test::More from requires to build_requires parameter
