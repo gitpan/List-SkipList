@@ -30,7 +30,7 @@ package main;
 
 use Test;
 BEGIN { plan tests => 315 };
-use List::SkipList 0.50;
+use List::SkipList 0.61;
 ok(1); # If we made it this far, we're ok.
 
 my $n = new List::SkipList::Node( 123, 987 );
@@ -111,7 +111,7 @@ foreach my $key (sort keys %TESTDATA1) {
   ok( $c->exists($key) );
   ok( $c->find($key) == $value );
 
-  ($aux_value, $finger) = $c->find($key, $finger);
+  ($aux_value, $finger) = $c->find_with_finger($key, $finger);
   ok( defined $aux_value );
   ok( $aux_value == $value );
   ok( defined $finger );

@@ -5,10 +5,10 @@ use strict;
 use warnings;
 
 # use Carp qw(carp croak);
-# no Carp::Assert;
+# no Carp::Assert qw(assert);
 
 our $VERSION
- = '1.3';
+ = '1.32';
 
 use enum qw( HEADER KEY VALUE );
 
@@ -16,13 +16,11 @@ sub new {
   my $class = shift;
   my $self  = [ ];
 
+  $self->[KEY]    = shift;
+  $self->[VALUE]  = shift;
+  $self->[HEADER] = shift || [ ];
+
   bless $self, $class;
-
-  $self->key(    shift        );
-  $self->value(  shift        );
-  $self->header( shift || [ ] );
-
-  return $self;
 }
 
 sub header {
@@ -31,7 +29,7 @@ sub header {
 #   assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
 #   assert( (!$hdr) || ref($hdr) eq "ARRAY" ), if DEBUG;
 
-  return ($hdr) ? ($self->[HEADER] = $hdr) : $self->[HEADER];
+  ($hdr) ? ( $self->[HEADER] = $hdr ) : $self->[HEADER];
 }
 
 # sub prev {
@@ -44,13 +42,13 @@ sub header {
 sub level {
   my ($self) = @_;
 #   assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
-  return scalar( @{$self->[HEADER]} );
+  scalar( @{$self->[HEADER]} );
 }
 
 sub validate_key {
   my ($self) = @_;
 #   assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
-  return 1;
+  1;
 }
 
 sub key {
@@ -59,7 +57,7 @@ sub key {
 #   assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
 #   assert( (@_==1) || $self->validate_key( $key ) ), if DEBUG;
 
-  return (@_ > 1) ? ( $self->[KEY] = $key ) : $self->[KEY];
+  (@_ > 1) ? ( $self->[KEY] = $key ) : $self->[KEY];
 }
 
 sub key_cmp {
@@ -67,18 +65,17 @@ sub key_cmp {
 #   assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
 
 #   assert( $self->validate_key( $right ) ), if DEBUG;
-#  unless (defined $left) { return -1; } # OPT: we don't need this?
 
   # OPT: It would be nice to use $self->key instead of $self->[KEY],
   # but we gain a nearly 25% speed improvement!
 
-  return ($self->[KEY] cmp $right);
+  ($self->[KEY] cmp $right);
 }
 
 sub validate_value {
   my ($self) = @_;
 #   assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
-  return 1;
+  1;
 }
 
 sub value {
@@ -87,9 +84,46 @@ sub value {
 #   assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
 #   assert( (@_==1) || $self->validate_value( $value ) ), if DEBUG;
 
-  return (@_ > 1) ? ( $self->[VALUE] = $value ) : $self->[VALUE];
+  (@_ > 1) ? ( $self->[VALUE] = $value ) : $self->[VALUE];
 }
 
+package List::SkipList::Header;
+
+use 5.006;
+use strict;
+use warnings;
+
+our $VERSION
+ = '0.01';
+
+our @ISA = qw( List::SkipList::Node );
+
+sub key_cmp {
+  -1;   # Note that the header returns "1" instead of "-1"!
+}
+
+sub key {
+  return;
+}
+
+sub value {
+  return;
+}
+
+package List::SkipList::Null;
+
+use 5.006;
+use strict;
+use warnings;
+
+our $VERSION
+ = '0.01';
+
+our @ISA = qw( List::SkipList::Header );
+
+sub key_cmp {
+  1;   # Note that the header returns "1" instead of "-1"!
+}
 
 package List::SkipList;
 
@@ -97,22 +131,18 @@ use 5.006;
 use strict;
 use warnings; # should we register warnings?
 
-our $VERSION = '0.60';
+our $VERSION = '0.61';
 
 use AutoLoader qw( AUTOLOAD );
 use Carp qw( carp croak );
-# no Carp::Assert;
+# no Carp::Assert qw(assert);
 
 use constant MAX_LEVEL       => 32;
 use constant DEF_P           => 0.5;
 
 use constant BASE_NODE_CLASS => 'List::SkipList::Node';
 
-use constant ARGLIST => {
-  max_level  => 1,
-  p          => 1,
-  node_class => 1,
-};
+my $NULL; INIT { $NULL = new List::SkipList::Null(); }
 
 # Caching the "finger" for the last insert allows sequential (sorted)
 # inserts to be sped up.  It does not seem to affect the performance
@@ -124,12 +154,14 @@ sub new {
   my $class = shift;
 
   my $self = {
-    NODECLASS => BASE_NODE_CLASS,
-    LIST      => undef,
-    SIZE      => undef,
-    MAXLEVEL  => MAX_LEVEL,
-    P         => 0,
-    P_LEVELS  => [ ],
+    NODECLASS => BASE_NODE_CLASS,       # node class used by list
+    LIST      => undef,                 # pointer to the header node
+    SIZE      => undef,                 # size of list
+    SIZE_THRESHOLD => undef,            # size at which SIZE_LEVEL increased
+    SIZE_LEVEL     => undef,            # maximum level random_level
+    MAXLEVEL  => MAX_LEVEL,             # absolute maximum level
+    P         => 0,                     # probability for each level
+    P_LEVELS  => [ ],                   # array used by random_level
     LASTNODE  => undef,                 # node with greatest key
     LASTKEY   => undef,                 # last key used by next_key
     LASTINSRT => undef,                 # cached insertion fingers
@@ -142,8 +174,8 @@ sub new {
   if (@_) {
     my %args = @_;
     foreach my $arg_name (CORE::keys %args) {
-      if (ARGLIST->{$arg_name}) {
-	my $method = "_set_" . $arg_name;
+      my $method = "_set_" . $arg_name;
+      if ($self->can($method)) {
 	$self->$method( $args{ $arg_name } );
       } else {
 	croak "Invalid parameter name: ``$arg_name\'\'";
@@ -157,17 +189,16 @@ sub new {
 }
 
 sub _set_node_class {
-  my $self = shift;
+  my ($self, $node_class) = @_;
 #   assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
-  my $node_class = shift;
+#   assert( UNIVERSAL::isa($node_class, BASE_NODE_CLASS) ), if DEBUG;
   $self->{NODECLASS} = $node_class;
 }
 
-sub _node_class
-  {
+sub _node_class {
     my ($self) = @_;
 #     assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
-    return $self->{NODECLASS};
+    $self->{NODECLASS};
   }
 
 sub reset {
@@ -180,16 +211,18 @@ sub clear {
   my ($self) = @_;
 #   assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
 
+  $self->{SIZE}     = 0;
+  $self->{SIZE_THRESHOLD} = 2;
+  $self->{SIZE_LEVEL}     = 2;
+
   my @header = ( undef ) x $self->_random_level;
 
-  $self->{LIST} = $self->_node_class->new ( undef, undef, \@header );
+  $self->{LIST} = new List::SkipList::Header( undef, undef, \@header );
 
 #   assert( $self->list->level > 0 ), if DEBUG;
 #   assert( UNIVERSAL::isa($self->{LIST}, BASE_NODE_CLASS) ), if DEBUG;
 
-  $self->{SIZE}     = 0;
-  $self->{LASTNODE} = undef;
-
+  $self->{LASTNODE}  = undef;
   $self->{LASTINSRT} = undef;
 
   $self->reset;
@@ -205,16 +238,15 @@ sub _set_max_level {
 sub max_level {
   my ($self) = @_;
 #   assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
-  return $self->{MAXLEVEL};
+  $self->{MAXLEVEL};
 }
 
 sub _set_p {
   no integer;
 
-  my $self = shift;
+  my ($self, $p) = @_;
 #   assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
   
-  my $p = shift;
 #   assert( ($p>0) && ($p<1) ), if DEBUG;
 
   $self->{P} = $p;
@@ -248,19 +280,25 @@ sub p {
 sub size {
   my ($self) = @_;
 #   assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
-  return $self->{SIZE};
+  $self->{SIZE};
 }
 
 sub list {
   my ($self) = @_;
 #   assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
-  return $self->{LIST};
+  $self->{LIST};
 }
 
 sub level {
   my ($self) = @_;
 #   assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
-  return $self->list->level;
+  $self->{LIST}->level;
+}
+
+sub null {
+#   my ($self) = @_;
+#   assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
+  $NULL;
 }
 
 sub _random_level {
@@ -269,16 +307,24 @@ sub _random_level {
   my ($self) = @_;
 #   assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
 
-  my $n     = rand();
-  my $max   = $self->max_level;
-  my $level = 1;
+  # we call $self->{MAXLEVEL} instead of $self->max_level for very
+  # minor speed improvement
 
-  while ( ($n < $self->{P_LEVELS}->[$level]) && ($level < $max)) {
-    $level++;
+  if ($self->{SIZE} >= $self->{SIZE_THRESHOLD}) {
+    $self->{SIZE_THRESHOLD} += $self->{SIZE_THRESHOLD};
+    $self->{SIZE_LEVEL}++, if ($self->{SIZE_LEVEL} < $self->max_level);
   }
 
-#   assert( ($level >= 1) && ($level <= $max) ), if DEBUG;
-  return $level;
+  my $n     = rand();
+  my $level = 1;
+
+  while (($n < $self->{P_LEVELS}->[$level]) && ($level < $self->{SIZE_LEVEL}))
+    {
+      $level++;
+    }
+
+#   assert( ($level >= 1) && ($level <= $self->{SIZE_LEVEL}) ), if DEBUG;
+  $level;
 }
 
 sub _search_with_finger {
@@ -296,7 +342,7 @@ sub _search_with_finger {
 #   assert( UNIVERSAL::isa( $list, BASE_NODE_CLASS ) ), if DEBUG;
 #   assert( $level >= 0 ), if DEBUG;
 
-  $finger_ref ||= [ ];
+#  $finger_ref ||= [ ];
 
   my $x = $finger_ref->[ $level ] || $list;
 
@@ -306,15 +352,11 @@ sub _search_with_finger {
   #   do { my $x = ... } while ($x)
   # doesn't work because it considers $x out of scope.
 
-  # OPT: Benchmark shows that "my $fwd" w/in loop ~25% slower
-
-  my $fwd;
-  my $cmp = 0;
+  my ($fwd, $cmp);
 
   do {
-    $fwd = $x->header()->[$level];
-    # OPT: Benchmark tests show ($fwd) 8% faster than (defined $fwd)
-    $cmp = ($fwd) ? $fwd->key_cmp($key) : 1; 
+    $fwd = $x->header()->[$level] || $NULL;
+    $cmp = $fwd->key_cmp($key);
 
     if ($cmp >= 0) {
       $finger_ref->[$level--] = $x;
@@ -327,8 +369,7 @@ sub _search_with_finger {
 
   #   assert( UNIVERSAL::isa($x, BASE_NODE_CLASS) ), if DEBUG;
 
-  return ($x, $finger_ref, $cmp);
-
+  ($x, $finger_ref, $cmp);
 }
 
 sub _search {
@@ -346,77 +387,64 @@ sub _search {
 #   assert( UNIVERSAL::isa( $list, BASE_NODE_CLASS ) ), if DEBUG;
 #   assert( $level >= 0 ), if DEBUG;
 
-  $finger_ref ||= [ ];
+#  $finger_ref ||= [ ];
 
   my $x = $finger_ref->[ $level ] || $list;
 
 #   assert( defined $x ), if DEBUG;
 
-  my $fwd;
-  my $cmp = 0;
+  my ($fwd, $cmp);
 
   do {
-    $fwd = $x->header()->[$level];
-    $cmp = ($fwd) ? $fwd->key_cmp($key) : 1; 
+    $fwd = $x->header()->[$level] || $NULL;
+    $cmp = $fwd->key_cmp($key);
+
     if ($cmp <= 0) {
       $x = $fwd;
     } else {
       $level--;
     }
+
   } while (($cmp) && ($level>=0));
 
   #   assert( UNIVERSAL::isa($x, BASE_NODE_CLASS) ), if DEBUG;
 
-  return ($x, $finger_ref, $cmp);
-
+  ($x, $finger_ref, $cmp);
 }
 
 sub insert {
   my ($self, $key, $value, $finger) = @_;
 
-  use integer;
-
 #   assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
 
+  use integer;
+
   my $list   = $self->list;
-  my $level  = $list->level;
 
   # We save the node and finger of the last insertion. If the next key
   # is larger, then we can use the "finger" to speed up insertions.
 
-  if ($finger) {
-#     assert( UNIVERSAL::isa($finger, "ARRAY") ), if DEBUG;
-  } elsif (defined $self->{LASTINSRT}) {
-    my ($node, $ref) = @{ $self->{LASTINSRT} };
+  if (!$finger) {
+    my ($node, $ref) = @{ $self->{LASTINSRT}||[ $list, [ ], ] };
     
     if ($node->key_cmp($key) < 0) {
       $finger = $ref;
     }
+  } else {
+#     assert( UNIVERSAL::isa($finger, "ARRAY") ), if DEBUG;
   }
 
   my ($x, $update_ref, $cmp) = $self->_search_with_finger($key, $finger);    
 
-  if ($cmp == 0) {
-    $x->value($value);
-    $self->{LASTINSRT} = [$x, $update_ref];
-  } else {
-
+  if ($cmp) {
     my $new_level = $self->_random_level;
-
-    # We limit $new_level to no more than 1+$list-level. The speed
-    # improvement is quite noticeable. [Present]
-
-    if ($new_level > $level) {
-       $new_level  = 1 + $level;
-       $update_ref->[ $level ] = $list;
-    }
 
     my $node     = $self->_node_class->new( $key, $value );
     my $node_hdr = $node->header();
     my $fing_hdr;
 
     for (my $i=0;$i<$new_level;$i++) {
-      $fing_hdr = $update_ref->[$i]->header();
+      $fing_hdr = ($update_ref->[$i]||$list)->header();
       $node_hdr->[$i] = $fing_hdr->[$i];
       $fing_hdr->[$i] = $node;
     }
@@ -434,8 +462,12 @@ sub insert {
     $self->{LASTINSRT} = [$node, $update_ref];
 
     $self->{SIZE}++;
+  } else {
+    # TODO: implement "write-once" option?
+    $x->value($value);
+    $self->{LASTINSRT} = [$x, $update_ref];
   }
-  return $update_ref;
+  $update_ref;
 }
 
 sub delete {
@@ -495,7 +527,7 @@ sub delete {
     # Note: It doesn't seem to be a wise idea to return a search
     # finger for deletions without further analysis
 
-    return $value;
+    $value;
 
   } else {
     return;
@@ -511,8 +543,7 @@ sub exists {
 #     assert( UNIVERSAL::isa($finger, "ARRAY") ), if DEBUG;
 #   }
 
-  my ($x, $new_finger, $cmp) =  $self->_search($key, $finger);
-  return ($cmp == 0);
+  ( ($self->_search($key, $finger))[2] == 0 );
 }
 
 sub find_with_finger {
@@ -525,11 +556,10 @@ sub find_with_finger {
 
   my ($x, $update_ref, $cmp) = $self->_search_with_finger($key, $finger);
 
-  if ($cmp == 0) {
-    return (wantarray) ? ($x->value, $update_ref) : $x->value;
-  } else {
-    return;
-  }
+  ($cmp == 0) ? (
+    (wantarray) ? ($x->value, $update_ref) : $x->value
+  ) : undef;
+
 }
 
 sub find {
@@ -542,11 +572,7 @@ sub find {
 
   my ($x, $update_ref, $cmp) = $self->_search($key, $finger);
 
-  if ($cmp == 0) {
-    return (wantarray) ? ($x->value, $update_ref) : $x->value;
-  } else {
-    return;
-  }
+  ($cmp == 0) ? $x->value : undef;
 }
 
 sub last_key {
@@ -592,7 +618,7 @@ sub next_key {
     ($last_key, $finger) = $self->last_key;
   }
 
-#   if (defined $finger) {
+#   if ($finger) {
 #     assert( ref($finger) eq "ARRAY" ), if DEBUG;
 #   }
 
@@ -612,7 +638,7 @@ sub next_key {
       return;
     }
   } else {
-    return $self->first_key;
+    $self->first_key;
   }
 }
 
@@ -1012,7 +1038,8 @@ L<Search fingers|/"About Search Fingers"> may also be used:
 
   $value = $list->find_with_finger( $key, $finger );
 
-To obtain the search finger for a key, call L</find> in a list context:
+To obtain the search finger for a key, call L</find_with_finger> in a
+list context:
 
   ($value, $finger) = $list->find_with_finger( $key );
 
@@ -1020,8 +1047,13 @@ To obtain the search finger for a key, call L</find> in a list context:
 
   $value = $list->find( $key );
 
-Works exactly like L</find_with_finger> except that no updated search
-finger is retured.
+  $value = $list->find( $key, $finger );
+
+Searches for the node associated with the key, and returns the value. If
+the key cannot be found, returns C<undef>.
+
+This method is slightly faster than L</find_with_finger> since it does
+not return a search finger when called in list context.
 
 =item search
 

@@ -1,6 +1,17 @@
 Revision history for Perl extension List::SkipList. (Changes which may
 not be backwards compatible are marked with an asterisk '*'.)
 
+0.61  Mon May 17 2004
+	* find no longer returns a finger in array context
+	* header is now a special subclass of List::SkipList::Node
+	- added special Null subclass of Header
+	- added null() method to return global null node
+	- a lot of minor code optimizations
+	- added comments
+	- maximum level of new nodes changed so that it is based on size
+          of list
+	- updated Benchmark.txt file
+
 0.60  Sat Apr 24 2004
 	- updates to POD
 	- cleaned up comments

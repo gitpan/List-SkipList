@@ -2,7 +2,9 @@ use strict;
 use warnings;
 
 use Benchmark;
-use List::SkipList 0.60;
+# use Devel::Size qw( size total_size );
+
+use List::SkipList 0.61;
 use Tree::Smart;
 use Tree::Ternary;
 use Tree::RedBlack;
@@ -50,11 +52,13 @@ sub make_sub {
 # sub make_sub_test {
 #   my $obj    = shift;
 #   my $method = shift;
+#   my $methd2 = shift;
 #   my $list   = shift;
 
 #   return sub {
 #     foreach my $num (@$list) {
-#       unless ($num eq $obj->$method($num)) {
+#       $obj->$method($num, $num);
+#       unless ($obj->$methd2($num) eq $num) {
 # 	die "Mismatch";
 # 	return;
 #       }
@@ -69,12 +73,28 @@ my $Trb = new Tree::RedBlack;
 
 use constant COUNT => 1;
 
+# timethese( COUNT, {
+#   'List::SkipList::ins RandomKeys' => make_sub_test($Sl, 'insert', 'find', \@RandomKeys),
+#   'Tree::RedBlack::ins RandomKeys' => make_sub_test($Trb, 'insert', 'find', \@RandomKeys),
+#   'Tree::Smart::ins RandomKeys' => make_sub_test($Ts, 'insert', 'find', \@RandomKeys),
+#   'Tree::Ternary::ins RandomKeys' => make_sub_test($Tt, 'insert', 'search', \@RandomKeys),
+# });
+
+
+# foreach my $obj ($Sl, $Trb, $Ts, $Tt) {
+#   print join("\t", size($obj), total_size($obj)), "\n";
+# }
+
 timethese( COUNT, {
   'List::SkipList::ins RandomKeys' => make_sub($Sl, 'insert', \@RandomKeys),
   'Tree::RedBlack::ins RandomKeys' => make_sub($Trb, 'insert', \@RandomKeys),
   'Tree::Smart::ins RandomKeys' => make_sub($Ts, 'insert', \@RandomKeys),
   'Tree::Ternary::ins RandomKeys' => make_sub($Tt, 'insert', \@RandomKeys),
 });
+
+# foreach my $obj ($Sl, $Trb, $Ts, $Tt) {
+#   print join("\t", size(\$obj), total_size(\$obj)), "\n";
+# }
 
 timethese( COUNT, {
   'List::SkipList::find' => make_sub($Sl, 'find', \@RandomKeys),
