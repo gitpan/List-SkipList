@@ -60,7 +60,7 @@ sub key_cmp {
 package main;
 
 use Test;
-BEGIN { plan tests => 452 };
+BEGIN { plan tests => 460 };
 use List::SkipList 0.32;
 ok(1); # If we made it this far, we're ok.
 
@@ -106,7 +106,7 @@ my %TESTDATA1 = (
 my $Size = 0;
 
 foreach my $key (keys %TESTDATA1) {
-  $value = $TESTDATA{ $key };
+  $value = $TESTDATA1{ $key };
 
   ok(!$c->exists($key) );
 
@@ -130,7 +130,7 @@ ok( $c->size == 0 );
 my ($aux_value, $finger);
 
 foreach my $key (sort keys %TESTDATA1) {
-  $value = $TESTDATA{ $key };
+  $value = $TESTDATA1{ $key };
 
   ok(!$c->exists($key) );
 
@@ -155,7 +155,10 @@ foreach my $key (sort keys %TESTDATA1) {
 }
 
 foreach my $key (keys %TESTDATA1) {
-  $value = $TESTDATA{ $key };
+  $value = $TESTDATA1{ $key };
+  ok( defined $value );
+
+#  unless (defined $value) { die "undefined"; }
 
   ok( $value == $c->delete( $key ) );
   $Size--;
@@ -164,7 +167,7 @@ foreach my $key (keys %TESTDATA1) {
 }
 
 foreach my $key (reverse sort keys %TESTDATA1) {
-  $value = $TESTDATA{ $key };
+  $value = $TESTDATA1{ $key };
 
   ok(!$c->exists($key) );
 
@@ -174,10 +177,10 @@ foreach my $key (reverse sort keys %TESTDATA1) {
   ok( $c->size      == $Size );
 
   ok( $c->exists($key) );
-  ok( $c->find($key) == $value );
+  ok( $c->find($key), $value );
 
   $c->insert($key, $value-1000 );
-  ok( $c->size      == $Size );
+  ok( $c->size       == $Size );
   ok( $c->find($key) == ($value-1000) );
 
   $c->insert($key, $value );
@@ -186,7 +189,7 @@ foreach my $key (reverse sort keys %TESTDATA1) {
 
 # v0.03 we added ability to define custom nodes
 
-my $n = new NumericNode();
+$n = new NumericNode();
 ok( ref($n) eq "NumericNode" );
 ok( UNIVERSAL::isa($n, "List::SkipList::Node") );
 ok( $n->validate_key(1) );
@@ -238,7 +241,7 @@ my $e = new List::SkipList( node_class => 'MemoizedNode' );
 ok( ref($e) eq "List::SkipList");
 
 foreach my $key (keys %TESTDATA1) {
-  $value = $TESTDATA{ $key };
+  $value = $TESTDATA1{ $key };
 
   ok(! $e->exists($key) );
 
@@ -360,7 +363,7 @@ foreach my $i (-2..10) {
   ok(scalar @keys, $g->size);
 
   foreach my $i (1..10) {
-    ok($i, @keys[$i-1]); }
+    ok($i, $keys[$i-1]); }
 
   ok(scalar $g->first_key, shift @keys);
   while (@keys) { ok($g->next_key, shift @keys); }
@@ -368,7 +371,7 @@ foreach my $i (-2..10) {
   my @vals = $g->values;
 
   foreach my $i (1..10) {
-    ok($g->find($i), @vals[$i-1]); }
+    ok($g->find($i), $vals[$i-1]); }
 }
 
 

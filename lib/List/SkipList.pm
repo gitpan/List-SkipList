@@ -40,7 +40,7 @@ sub new {
 
 sub header {
   my $self = shift;
-  assert( UNIVERSAL::isa($self, "List::SkipList::Node") ), if DEBUG;
+  assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
 
   if (@_) {
     if (ref($_[0]) eq "ARRAY") {
@@ -57,14 +57,14 @@ sub header {
 
 sub level {
   my $self = shift;
-  assert( UNIVERSAL::isa($self, "List::SkipList::Node") ), if DEBUG;
+  assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
   return scalar @{$self->header()};
 }
 
 sub forward
   {
     my $self = shift;
-    assert( UNIVERSAL::isa($self, "List::SkipList::Node") ), if DEBUG;
+    assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
 
     my $level = shift;
     assert (($level >= 0) ), if DEBUG;
@@ -74,7 +74,7 @@ sub forward
     if (@_) {
       my $next = shift;
       assert( !defined($next) ||
-	      UNIVERSAL::isa($next, "List::SkipList::Node") ), if DEBUG;
+	      UNIVERSAL::isa($next, __PACKAGE__) ), if DEBUG;
 
       $hdr->[$level] = $next;
       $self->header( $hdr );
@@ -87,13 +87,13 @@ sub forward
 
 sub validate_key {
 #    my $self = shift;
-#    assert( UNIVERSAL::isa($self, "List::SkipList::Node") ), if DEBUG;
+#    assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
   return 1;
 }
 
 sub key {
   my $self = shift;
-  assert( UNIVERSAL::isa($self, "List::SkipList::Node") ), if DEBUG;
+  assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
 
   if (@_) {
     my $key = shift;
@@ -107,7 +107,7 @@ sub key {
 
 sub key_cmp {
   my $self = shift;
-  assert( UNIVERSAL::isa($self, "List::SkipList::Node") ), if DEBUG;
+  assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
 
   my $left  = $self->key;
   my $right = shift;
@@ -120,13 +120,13 @@ sub key_cmp {
 
 sub validate_value {
 #    my $self = shift;
-#    assert( UNIVERSAL::isa($self, "List::SkipList::Node") ), if DEBUG;
+#    assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
   return 1;
 }
 
 sub value {
   my $self = shift;
-  assert( UNIVERSAL::isa($self, "List::SkipList::Node") ), if DEBUG;
+  assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
 
   if (@_) {
     my $value = shift;
@@ -144,7 +144,7 @@ use 5.006;
 use strict;
 use warnings;
 
-our $VERSION = '0.32';
+our $VERSION = '0.33';
 
 use AutoLoader 'AUTOLOAD';
 use Carp;
@@ -191,7 +191,7 @@ sub new {
 
 sub _set_node_class {
   my $self = shift;
-  assert( UNIVERSAL::isa($self, "List::SkipList") ), if DEBUG;
+  assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
   my $node_class = shift;
   $self->{NODECLASS} = $node_class;
 }
@@ -199,19 +199,19 @@ sub _set_node_class {
 sub _node_class
   {
     my $self = shift;
-    assert( UNIVERSAL::isa($self, "List::SkipList") ), if DEBUG;
+    assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
     return $self->{NODECLASS};
   }
 
 sub reset {
   my $self = shift;
-  assert( UNIVERSAL::isa($self, "List::SkipList") ), if DEBUG;
+  assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
   $self->{LASTKEY}  = undef;
 }
 
 sub clear {
   my $self = shift;
-  assert( UNIVERSAL::isa($self, "List::SkipList") ), if DEBUG;
+  assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
 
   $self->{LIST} = undef;
 
@@ -229,7 +229,7 @@ sub clear {
 
 sub _set_max_level {
   my $self = shift;
-  assert( UNIVERSAL::isa($self, "List::SkipList") ), if DEBUG;
+  assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
   my $level = shift;
   assert( ($level>1) ), if DEBUG;
   $self->{MAXLEVEL} = $level;
@@ -237,7 +237,7 @@ sub _set_max_level {
 
 sub max_level {
   my $self = shift;
-  assert( UNIVERSAL::isa($self, "List::SkipList") ), if DEBUG;
+  assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
   return $self->{MAXLEVEL};
 }
 
@@ -245,7 +245,7 @@ sub _set_p {
   no integer;
 
   my $self = shift;
-  assert( UNIVERSAL::isa($self, "List::SkipList") ), if DEBUG;
+  assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
 
   my $p = shift;
   assert( ($p>0) && ($p<1) ), if DEBUG;
@@ -257,25 +257,25 @@ sub p {
   no integer;
 
   my $self = shift;
-  assert( UNIVERSAL::isa($self, "List::SkipList") ), if DEBUG;
+  assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
   return $self->{P};
 }
 
 sub size {
   my $self = shift;
-  assert( UNIVERSAL::isa($self, "List::SkipList") ), if DEBUG;
+  assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
   return $self->{SIZE};
 }
 
 sub list {
   my $self = shift;
-  assert( UNIVERSAL::isa($self, "List::SkipList") ), if DEBUG;
+  assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
   return $self->{LIST};
 }
 
 sub level {
   my $self = shift;
-  assert( UNIVERSAL::isa($self, "List::SkipList") ), if DEBUG;
+  assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
   return $self->list->level;
 }
 
@@ -283,7 +283,7 @@ sub _random_level {
   no integer;
 
   my $self = shift;
-  assert( UNIVERSAL::isa($self, "List::SkipList") ), if DEBUG;
+  assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
 
   my $level = 1;
 
@@ -297,7 +297,7 @@ sub _random_level {
 
 sub _search {
   my $self = shift;
-  assert( UNIVERSAL::isa($self, "List::SkipList") ), if DEBUG;
+  assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
 
   my $list = $self->list;
 
@@ -340,7 +340,7 @@ sub _search {
 
 sub insert {
   my $self = shift;
-  assert( UNIVERSAL::isa($self, "List::SkipList") ), if DEBUG;
+  assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
 
   my $list   = $self->list;
 
@@ -398,7 +398,7 @@ sub insert {
 sub delete {
 
   my $self = shift;
-  assert( UNIVERSAL::isa($self, "List::SkipList") ), if DEBUG;
+  assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
 
   my $key  = shift;
   assert( defined $key ), if DEBUG;
@@ -447,7 +447,7 @@ sub delete {
 sub exists {
 
   my $self = shift;
-  assert( UNIVERSAL::isa($self, "List::SkipList") ), if DEBUG;
+  assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
 
   my $key    = shift;
   my $finger = shift;
@@ -464,7 +464,7 @@ sub exists {
 sub find {
 
   my $self = shift;
-  assert( UNIVERSAL::isa($self, "List::SkipList") ), if DEBUG;
+  assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
 
   my $key    = shift;
   my $finger = shift;
@@ -484,7 +484,7 @@ sub find {
 
 sub last_key {
   my $self = shift;
-  assert( UNIVERSAL::isa($self, "List::SkipList") ), if DEBUG;
+  assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
 
   if (defined $self->{LASTKEY}) {
     return (wantarray) ?
@@ -496,7 +496,7 @@ sub last_key {
 
 sub first_key {
   my $self = shift;
-  assert( UNIVERSAL::isa($self, "List::SkipList") ), if DEBUG;
+  assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
 
   my $list = $self->list;
   if (defined $list->forward(0)) {
@@ -509,7 +509,7 @@ sub first_key {
 
 sub next_key {
   my $self = shift;
-  assert( UNIVERSAL::isa($self, "List::SkipList") ), if DEBUG;
+  assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
 
   my $last_key = shift;
   my $finger = shift;
@@ -563,7 +563,7 @@ __END__
 
 sub _first_node { # actually this is the second node
   my $self = shift;
-  assert( UNIVERSAL::isa($self, "List::SkipList") ), if DEBUG;
+  assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
 
   my $list = $self->list;
   if (defined $list->forward(0)) {
@@ -575,7 +575,7 @@ sub _first_node { # actually this is the second node
 
 sub least {
   my $self = shift;
-  assert( UNIVERSAL::isa($self, "List::SkipList") ), if DEBUG;
+  assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
 
   my ($node, $finger) = $self->_first_node;
 
@@ -588,7 +588,7 @@ sub least {
 
 sub greatest {
   my $self = shift;
-  assert( UNIVERSAL::isa($self, "List::SkipList") ), if DEBUG;
+  assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
 
   my $node = $self->{LASTNODE};
   if (defined $node) {
@@ -600,7 +600,7 @@ sub greatest {
 
 sub keys {
   my $self = shift;
-  assert( UNIVERSAL::isa($self, "List::SkipList") ), if DEBUG;
+  assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
 
   my @keys = ();
 
@@ -617,7 +617,7 @@ sub keys {
 
 sub values {
   my $self = shift;
-  assert( UNIVERSAL::isa($self, "List::SkipList") ), if DEBUG;
+  assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
 
   my @values = ();
 
@@ -633,7 +633,7 @@ sub values {
 
 sub copy {
   my $self = shift;
-  assert( UNIVERSAL::isa($self, "List::SkipList") ), if DEBUG;
+  assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
 
   my $list = new List::SkipList(
     max_level  => $self->max_level,
@@ -654,10 +654,10 @@ sub copy {
 sub merge {
 
   my $list1 = shift;
-  assert( UNIVERSAL::isa($list1, "List::SkipList") ), if DEBUG;
+  assert( UNIVERSAL::isa($list1, __PACKAGE__) ), if DEBUG;
 
   my $list2 = shift;
-  assert( UNIVERSAL::isa($list2, "List::SkipList") ), if DEBUG;
+  assert( UNIVERSAL::isa($list2, __PACKAGE__) ), if DEBUG;
 
   my ($node1, $finger1) = $list1->_first_node;
   my ($node2, $finger2) = $list2->_first_node;
@@ -695,12 +695,12 @@ sub merge {
 
 sub append {
   my $list1 = shift;
-  assert( UNIVERSAL::isa($list1, "List::SkipList") ), if DEBUG;
+  assert( UNIVERSAL::isa($list1, __PACKAGE__) ), if DEBUG;
 
   my $list2 = shift;
 
   unless (defined $list2) { return; }
-  assert( UNIVERSAL::isa($list2, "List::SkipList") ), if DEBUG;
+  assert( UNIVERSAL::isa($list2, __PACKAGE__) ), if DEBUG;
 
   my $node = $list1->{LASTNODE};
   if (defined $node) {
@@ -745,7 +745,7 @@ sub append {
 sub _debug {
 
   my $self = shift;
-  assert( UNIVERSAL::isa($self, "List::SkipList") ), if DEBUG;
+  assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
 
   my $list   = $self->list;
 

@@ -72,6 +72,11 @@ DESCRIPTION
 REVISION HISTORY
     Changes since v0.31:
 
+    0.33  Tue Mar 16 2004
+	- fixed typos in test cases that caused Makefile tests to fail
+	- removed causes of warnings in 01-SkipList.t
+	- replaced explicit package names with __PACKAGE__ placeholder
+
     0.32  Mon Mar 15 2004
 	- renamed test.pl to t/01-SkipList.t
 	- added Build.PL to distribution
