@@ -1,5 +1,12 @@
 Revision history for Perl extension List::SkipList.
 
+0.20  Wed Nov 26 2003
+	- if no last_key specified for next_key, it returns first_key
+	- search fingers added
+	- find, first_key, next_key return a list in list context as part of
+	  support for search fingers
+	- minor changes to documentation
+
 0.13  Wed Nov 19 2003
 	- added call to validate_key in key_cmp in Node
 

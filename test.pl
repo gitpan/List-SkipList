@@ -30,8 +30,8 @@ sub key_cmp {
 package main;
 
 use Test;
-BEGIN { plan tests => 173 };
-use List::SkipList 0.13;
+BEGIN { plan tests => 295 };
+use List::SkipList 0.20;
 ok(1); # If we made it this far, we're ok.
 
 
@@ -98,6 +98,8 @@ $c->clear;
 $Size = 0;
 ok( $c->size == 0 );
 
+my ($aux_value, $finger);
+
 foreach my $key (sort keys %TESTDATA1) {
   $value = $TESTDATA{ $key };
 
@@ -110,6 +112,10 @@ foreach my $key (sort keys %TESTDATA1) {
 
   ok( $c->exists($key) );
   ok( $c->find($key) == $value );
+
+  ($aux_value, $finger) = $c->find($key, $finger);
+  ok( $aux_value == $value );
+  ok( defined $finger );
 
   $c->insert($key, $value-1 );
   ok( $c->size      == $Size );
@@ -175,5 +181,16 @@ while (my $next = $d->next_key($last)) {
   $last = $next;
 }
 
+# Same tests, with fingers
+
+($last, $finger) = $d->first_key;
+ok($last == 1);
+ok(!defined $finger);
+
+while (my ($next, $finger) = $d->next_key($last)) {
+  ok( $next == ($last+1) );
+  ok( defined $finger );
+  $last = $next;
+}
 
 # $d->debug;

@@ -27,13 +27,21 @@ DESCRIPTION
     More information is available in the module documentation.
 
 REVISION HISTORY
-    Changes since v0.12:
+    Changes since v0.13:
 
-    0.13  Wed Nov 19 2003
-	- added call to validate_key in key_cmp in Node
+    0.20  Wed Nov 26 2003
+	- if no last_key specified for next_key, it returns first_key
+	- search fingers added
+	- find, first_key, next_key return a list in list context as part of
+	  support for search fingers
+	- minor changes to documentation
 
 CAVEATS
     This is a prototype module and may contain bugs.
+
+    Skip lists are non-deterministic.  Because of this, bugs in programs
+    that use this module may be subtle and difficult to reproduce without
+    many repeated attempts.
 
 AUTHOR
     Robert Rothenberg <rrwo@cpan.org>

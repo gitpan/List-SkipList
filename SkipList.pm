@@ -140,7 +140,7 @@ use 5.006;
 use strict;
 use warnings;
 
-our $VERSION = '0.13';
+our $VERSION = '0.20';
 
 use Carp;
 use Carp::Assert;
@@ -290,7 +290,15 @@ sub _search {
   my $key  = shift;
 
   my $x = $list;
-  my @update = map { $list } (1..$list->level);
+
+  my @update;
+  my $finger = shift;
+  if (defined $finger) {
+    assert( UNIVERSAL::isa($finger, "ARRAY") ), if DEBUG;
+    @update = @{$finger};
+  } else {
+    @update = map { $list } (1..$list->level);
+  }
 
   my $level     = $list->level-1;
 
@@ -325,9 +333,15 @@ sub insert {
   my $key    = shift;
   my $value  = shift;
 
+  my $finger = shift;
+
+  if (defined $finger) {
+    assert( UNIVERSAL::isa($finger, "ARRAY") ), if DEBUG;
+  }
+
   {
 
-    my ($x, $update_ref) = $self->_search($key);
+    my ($x, $update_ref) = $self->_search($key, $finger);
 
     if ($x->key_cmp($key) == 0) {
       $x->value($value);
@@ -370,7 +384,13 @@ sub delete {
   my $key  = shift;
   assert( defined $key ), if DEBUG;
 
-  my ($x, $update_ref) = $self->_search($key);
+  my $finger = shift;
+
+  if (defined $finger) {
+    assert( UNIVERSAL::isa($finger, "ARRAY") ), if DEBUG;
+  }
+
+  my ($x, $update_ref) = $self->_search($key, $finger);
 
   if ($x->key_cmp($key) == 0) {
     my $value = $x->value;
@@ -392,6 +412,10 @@ sub delete {
     $self->{SIZE} --;
 
     undef $x;
+
+    # it doesn't seem to be a wise idea to return a search finger for
+    # deletions without further analysis
+
     return $value;
 
   } else {
@@ -404,9 +428,14 @@ sub exists {
   my $self = shift;
   assert( UNIVERSAL::isa($self, "List::SkipList") ), if DEBUG;
 
-  my $key  = shift;
+  my $key    = shift;
+  my $finger = shift;
 
-  my ($x, $update_ref) = $self->_search($key);
+  if (defined $finger) {
+    assert( UNIVERSAL::isa($finger, "ARRAY") ), if DEBUG;
+  }
+
+  my ($x, $update_ref) = $self->_search($key, $finger);
 
   return ($x->key_cmp($key) == 0);
 }
@@ -416,12 +445,17 @@ sub find {
   my $self = shift;
   assert( UNIVERSAL::isa($self, "List::SkipList") ), if DEBUG;
 
-  my $key  = shift;
+  my $key    = shift;
+  my $finger = shift;
 
-  my ($x, $update_ref) = $self->_search($key);
+  if (defined $finger) {
+    assert( UNIVERSAL::isa($finger, "ARRAY") ), if DEBUG;
+  }
+
+  my ($x, $update_ref) = $self->_search($key, $finger);
 
   if ($x->key_cmp($key) == 0) {
-    return $x->value;
+    return (wantarray)? ($x->value, $update_ref) : $x->value;
   } else {
     return;
   }
@@ -433,7 +467,8 @@ sub first_key {
 
   my $list = $self->list;
   if (defined $list->forward(0)) {
-    return $list->forward(0)->key;
+    return (wantarray) ?
+      ($list->forward(0)->key, undef) : $list->forward(0)->key;
   } else {
     return;
   }
@@ -444,11 +479,19 @@ sub next_key {
   assert( UNIVERSAL::isa($self, "List::SkipList") ), if DEBUG;
 
   my $last_key = shift;
+
+  my $finger = shift;
+
+  if (defined $finger) {
+    assert( UNIVERSAL::isa($finger, "ARRAY") ), if DEBUG;
+  }
+
   if (defined $last_key) {
-    my ($list, $update_ref) = $self->_search($last_key);
+    my ($list, $update_ref) = $self->_search($last_key, $finger);
     if ($list->key_cmp($last_key) == 0) {
       if (defined $list->forward(0)) {
-	return $list->forward(0)->key;
+	return (wantarray) ?
+	  ($list->forward(0)->key, $update_ref) : $list->forward(0)->key;
       } else {
 	return;
       }
@@ -456,7 +499,7 @@ sub next_key {
       return;
     }
   } else {
-    return;
+    return $self->first_key;
   }
 }
 
@@ -539,6 +582,9 @@ but do not have the overhead with respect to inserting new items.
 
 For more information on skip lists, see the L<SEE ALSO> section below.
 
+Note: Only alphanumeric keys are supported.  To use numeric or other
+types of keys, see L<Customizing the Node Class> below.
+
 =head2 Methods
 
 A detailed description of the methods used is below.
@@ -581,12 +627,24 @@ See the L<Customizing the Node Class> section below.
 
 Inserts a new node into the list.
 
+You may also use a L<search finger|About Search Fingers> with insert,
+provided that the finger is for a key that occurs earlier in the list:
+
+  $list->insert( $key, $value, $finger );
+
+Using fingers for inserts is I<not> recommended since there is a risk
+of producing corrupted lists.
+
 =item exists
 
   if ($list->exists( $key )) { ... }
 
 Returns true if there exists a node associated with the key, false
 otherwise.
+
+This may also be used with  L<search fingers|About Search Fingers>:
+
+  if ($list->exists( $key, $finger )) { ... }
 
 =item find
 
@@ -595,11 +653,24 @@ otherwise.
 Searches for the node associated with the key, and returns the value. If
 the key cannot be found, returns C<undef>.
 
+L<Search fingers|About Search Fingers> may also be used:
+
+  $value = $list->find( $key, $finger );
+
+To obtain the search finger for a key, call C<find> in a list context:
+
+  ($value, $finger) = $list->find( $key );
+
 =item first_key
 
   $key = $list->first_key;
 
 Returns the first key in the list.
+
+If called in a list context, will return a
+L<search finger|About Search Fingers>:
+
+  ($key, $finger) = $list->first_key;
 
 =item next_key
 
@@ -607,12 +678,28 @@ Returns the first key in the list.
 
 Returns the key following the previous key.
 
+Search fingers may also be used to improve performance:
+
+  $key = $list->next_key( $last_key, $finger );
+
+If called in a list context, will return a
+L<search finger|About Search Fingers>:
+
+  ($key, $finger) = $list->next_key( $last_key, $finger );
+
 =item delete
 
   $value = $list->delete( $key );
 
 Deletes the node associated with the key, and returns the value.  If
 the key cannot be found, returns C<undef>.
+
+L<Search fingers|About Search Fingers> may also be used:
+
+  $value = $list->delete( $key, $finger );
+
+Calling C<delete> in a list context I<will not> return a search
+finger.
 
 =item clear
 
@@ -628,7 +715,6 @@ Returns the number of nodes in the list.
 
 =back
 
-
 =head2 Internal Methods
 
 Internal methods are documented below. These are intended for
@@ -643,6 +729,12 @@ developer use only.  These may change in future versions.
 Searches for the node with a key.  If the key is found, that node is
 returned along with a L<header>.  If the key is not found, the previous
 node from where the node would be if it existed is returned.
+
+Search fingers may also be specified:
+
+  ($node, $header_ref) = $list->_search( $key, $finger );
+
+Note that the L<header> is actually a L<search finger|About Search Fingers>.
 
 =item p
 
@@ -847,13 +939,37 @@ To use this, we say simply
 The skip list should work normally, except that the keys must be
 numbers.
 
+For another example of customized nodes, see L<Tie::RangeHash> version
+1.00_b1 or later.
+
+=head2 About Search Fingers
+
+A side effect of the search function is that it returns a I<finger> to
+where the key is or should be in the list.
+
+We can use this finger for future searches if the key that we are
+searching for occurs I<after> the key that produced the finger. For
+example,
+
+  ($value, $finger) = $list->find('Turing');
+
+If we are searching for a key that occurs after 'Turing' in the above
+example, then we can use this finger:
+
+  $value = $list->find('VonNeuman', $finger);
+
+If we use this finger to search for a key that occurs before 'Turing'
+however, it may fail:
+
+  $value = $list->find('Goedel', $finger); # this may not work
+
+Therefore, use search fingers with caution.
+
 =head1 TODO
 
 The following features may be added in future versions:
 
 =over
-
-=item Searching with "Fingers"
 
 =item Merging Lists
 
@@ -865,7 +981,12 @@ The following features may be added in future versions:
 
 =head1 CAVEATS
 
-This is a prototype module and may contain bugs.
+This is a prototype module and may contain bugs.  However...
+
+Skip lists are non-deterministic.  Because of this, bugs in programs
+that use this module may be subtle and difficult to reproduce without
+many repeated attempts.  This is especially true if there are bugs in
+a L<custom node|Customizing the Node Class>.
 
 =head1 AUTHOR
 
