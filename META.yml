@@ -1,8 +1,7 @@
 --- #YAML:1.0
 name: List-SkipList
-version: 0.64
-author:
-  - Robert Rothenberg <rrwo at cpan.org>
+version: 0.65
+author: Robert Rothenberg <rrwo at cpan.org>
 abstract: Perl implementation of skip lists
 license: perl
 requires:
@@ -11,4 +10,4 @@ requires:
 recommends:
   Carp::Assert: 0.17
 provides: {}
-generated_by: Module::Build version 0.24
+generated_by: Module::Build version 0.25

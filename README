@@ -81,6 +81,17 @@ DESCRIPTION
 REVISION HISTORY
     Changes since v0.63:
 
+    0.65 Thu June  3 2004
+	- updated README
+
+    0.64 Thu June  3 2004
+        - updated examples in documentation of custom node
+	- minor optimizations and code cleanup
+	- commented-out call to prev() in _debug
+	- removed use of Carp::Assert in tests
+	- redesigned benchmark script and included parse-out.pl
+	- updated Benchmark.txt
+	- updated README
 
     A detailed revision history is in the Changes file included with
     this distribution.

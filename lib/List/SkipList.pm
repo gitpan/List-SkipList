@@ -151,7 +151,7 @@ use 5.006;
 use strict;
 use warnings;
 
-our $VERSION = '0.64';
+our $VERSION = '0.65';
 
 use AutoLoader qw( AUTOLOAD );
 use Carp qw( carp croak );

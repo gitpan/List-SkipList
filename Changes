@@ -1,6 +1,9 @@
 Revision history for Perl extension List::SkipList. (Changes which may
 not be backwards compatible are marked with an asterisk '*'.)
 
+0.65 Thu June  3 2004
+	- updated README
+
 0.64 Thu June  3 2004
         - updated examples in documentation of custom node
 	- minor optimizations and code cleanup
