@@ -15,10 +15,10 @@ use warnings;
 
 use constant SIZE => 100;
 
-use Test::More tests => 6+(75*SIZE);
+use Test::More tests => 6+(69*SIZE);
 use_ok("List::SkipList");
 
-ok($List::SkipList::VERSION >= 0.70);
+ok($List::SkipList::VERSION >= 0.72);
 
 my @Keys = ();
 my $Cnt  = SIZE;
@@ -74,13 +74,13 @@ foreach (1..SIZE) {
   $List->list->value($a);
   ok( !defined $List->list->value );
 
-  ok( $List::SkipList::NULL->key_cmp($k) == 1 );
-  ok( !defined $List::SkipList::NULL->key );
-  ok( !defined $List::SkipList::NULL->value );
-  $List::SkipList::NULL->value($a);
-  ok( !defined $List::SkipList::NULL->value );
-  ok( $List::SkipList::NULL->level == 0 );
-  ok( !defined $List::SkipList::NULL->header );
+#   ok( $List::SkipList::NULL->key_cmp($k) == 1 );
+#   ok( !defined $List::SkipList::NULL->key );
+#   ok( !defined $List::SkipList::NULL->value );
+#   $List::SkipList::NULL->value($a);
+#   ok( !defined $List::SkipList::NULL->value );
+#   ok( $List::SkipList::NULL->level == 0 );
+#   ok( !defined $List::SkipList::NULL->header );
 
 
   my $finger = $List->insert( $k, $a );

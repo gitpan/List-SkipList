@@ -7,10 +7,12 @@ my $build = Module::Build->new
      requires => {
        'enum'                       => 1.016,
        'perl'                       => '5.6.1',
-       'Test::More'                 => 0,
      },
      recommends => {
        'Carp::Assert'               => 0.17,
+     },
+     build_requires => {
+       'Test::More'                 => 0,
      },
      autosplit => 'lib/List/SkipList.pm',
      create_makefile_pl => 'traditional',

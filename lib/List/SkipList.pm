@@ -16,10 +16,6 @@ sub new {
   my ($class, $key, $value, $hdr) = @_;
   my $self  = [ ($hdr || [ ]), $key, $value ];
 
-#   $self->[KEY]    = $key;
-#   $self->[VALUE]  = $value;
-#   $self->[HEADER] = $hdr || [ ];
-
   bless $self, $class;
 }
 
@@ -118,52 +114,14 @@ sub value {
 
 1;
 
-package List::SkipList::Null;
-
-use 5.006;
-use strict;
-use warnings;
-# use Carp::Assert qw( assert DEBUG );
-
-our $VERSION
- = '0.05';
-
-our @ISA = qw( List::SkipList::Node );
-
-sub header {
-#    assert( 0 ), if DEBUG;
-  return;
-}
-
-sub level {
-#    assert( 0 ), if DEBUG;
-  return 0;
-}
-
-sub key_cmp {
-  1;   # Note that the header returns "1" instead of "-1"!
-}
-
-sub key {
-#    assert( 0 ), if DEBUG;
-  return;
-}
-
-sub value {
-#    assert( 0 ), if DEBUG;
-  return;
-}
-
-1;
-
 package List::SkipList;
 
 use 5.006;
 use strict;
 use warnings::register __PACKAGE__;
 
-our $VERSION = '0.71';
-$VERSION = eval $VERSION;
+our $VERSION = '0.72';
+# $VERSION = eval $VERSION;
 
 use AutoLoader qw( AUTOLOAD );
 use Carp qw( carp croak );
@@ -179,12 +137,6 @@ use constant DEF_K           => 0;
 
 use constant BASE_NODE_CLASS => 'List::SkipList::Node';
 
-# $NULL is a workaround for situations where a reference might be
-# 'undef' (e.g. $fwd = $node->header->[0] || $NULL), and will probably
-# be phased out of future versions.   We still use 'undef' as an
-# indicator that we're at the end of the list.
-
-our $NULL =  new List::SkipList::Null();
 
 # We use Exporter instead of something like Exporter::Lite because
 # Carp uses it.
@@ -194,12 +146,9 @@ require Exporter;
 our @EXPORT    = ( );
 our @EXPORT_OK = ( );
 
-sub import {
-  unless ($NULL) {
-    $NULL = new List::SkipList::Null();
-  }
-  goto &Exporter::import;
-}
+# sub import {
+#   goto &Exporter::import;
+# }
 
 sub new {
   no integer;
@@ -227,6 +176,8 @@ sub new {
 
   $self->_set_p( DEF_P ); # initializes P_LEVELS
   $self->_set_k( DEF_K );
+
+
 
   if (@_) {
     my %args = @_;
@@ -548,9 +499,10 @@ sub insert {
   my ($node, $cmp);
 
   unless ($finger) {
-    $node   = $self->{LASTINSRT}->[0] || $NULL;
-    $finger = $self->{LASTINSRT}->[1],
-      if ($node->key_cmp($key) <= 0);
+    $node   = $self->{LASTINSRT}->[0] and do {
+      $finger = $self->{LASTINSRT}->[1],
+	if ($node->key_cmp($key) <= 0);
+      };
   }
 
 #   assert( UNIVERSAL::isa($finger, 'ARRAY') ), if DEBUG;

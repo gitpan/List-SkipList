@@ -79,72 +79,11 @@ DESCRIPTION
         <http://en.wikipedia.org/wiki/Skip_list>
 
 REVISION HISTORY
-    Changes since v0.65:
+    Changes since v0.71:
 
-    0.71 Sat Jun 12 2004
-	- updated POD
-	- redesigned internals of first_key, next_key and last_key
-	* delete now resets last_key
-	* the parameters for last_key are changed (this interface was
-          meant for internal use only, however)
-	- added index_by_key, key_by_index and value_by_index methods
-	- updated documentation on p and k parameters
-	- added support for k parameter
-	- redid probability distribution calculations
-	- fixed bug in benchmarks (was "existing" bogus keys)
-	- added support for duplicate values
-	- added find_duplicates method
-	- corrected typos in POD for new method
-
-    0.71_01 Wed Jun  9 2004
-	- fixed bug in benchmarks (was deleting bogus keys)
-	- added some warnings
-	- improved delete method
-	- added truncate method
-	- _search_with_finger now builds correct update vector
-	- append calls _adjust_level_threshold
-	- minor optimizations of node class
-	* renamed internal key {LASTNODE} to {LIST_END} so as not to
-	  be confused with last_key method
-	- _first_node is not autoloading since it's now used by first_key
-	- updated POD to reflect issue with undefined values
-	- improved copy method (undef values handled)
-	- copy method can accept an argument: copy from key
-	* copy method no longer resets first_key
-	* _first_node no longer returns a finger (it was never used)
-	- updated documentation on values for max_level and p
-	- corrected typos in documentation
-	- added tests for deleted greatest bug
-	- fixed bug with greatest method when deleting last node
-	- added _greatest_node method to find the last node as needed
-	- other minor code changes
-
-    0.70_01 Sun Jun  6 2004 
-	- tests rewritten (work in progress)
-	- fixed bug with next_key checking node when key was deleted
-	- uses Test::More for tests
-	- fixed "Too late to run INIT block" error with Test::More
-	  use_ok, $NULL is now set in import() method
-	- fixed bug where level sometimes exceeded user-set max level
-	- P and max_level can now be set dynamically
-	- added tests for max_level and p
-	- checks for error when setting max_level or P
-	- fixed bug with definition of List::SkipList::Null
-	- $NULL is now an 'our' variable and accessible from outside
-	- level method was changed to autoload, since it was redundant
-	- minor optimization of _search_with_finger and _search
-	* header method in Node is read-only - it returns a pointer
-	  which can be used to change values anyway
-	* key method in Node is read-only - it should not be
-          changed once it is inside a list
-	- added _adjust_level_threshold method from code that was in
-	  _new_node_level to adjust SIZE_THRESHOLD/SIZE_LEVEL
-	- _adjust_level_threshold is called upon inserts and deletes
-	- SIZE_LEVEL does not decrease under MIN_LEVEL
-	* removed null() method - it was never used
-	* max_level cannot be greater than 32 (cleaner code)
-	- increased coverage of "heavy" test script
-	- minor updates to all test scripts
+    0.72    Wed Jun 30 2004
+	- removed List::SkipList::Null type and $NULL variable
+	- moved Test::More from requires to build_requires parameter
 
     A detailed revision history is in the Changes file included with
     this distribution.
