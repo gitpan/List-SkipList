@@ -4,9 +4,12 @@ NAME
 REQUIREMENTS
     Perl 5.6.1 is required.
 
-    "Carp::Assert" is used for validation and debugging. (The assertions can
-    be commented out if the module cannot be installed.) Otherwise standard
-    modules are used.
+    The following non-standard modules are required:
+
+      enum
+
+    Carp::Assert is no longer required.  However, the assertions can
+    be uncommented for debugging.
 
 Installation
     Installation can be done using the traditional Makefile.PL or the
@@ -76,25 +79,17 @@ DESCRIPTION
         <http://en.wikipedia.org/wiki/Skip_list>
 
 REVISION HISTORY
-    Changes since v0.42:
+    Changes since v0.50:
 
-    0.50  Mon Mar 29 2004
-	- section about Assertions added to POD
-	- documented level() method
-	- clear method now intitializes initial node header
-	- added various assertions
-	* removed the forward method from *::Node
-	- uses enum module
-	- added test for non-integer keys
-	- clear method now resets LAST_INSRT cache
-	- removed use of LEVEL for List::SkipList::Node
-	* key_cmp method accesses KEY directly rather than uses the key method
-	* calling convention for List::SkipList::Node is changed
-	- various optimizations to List::SkipList and *::Node
-	- added comparison to Tree::RedBlack in Benchmark.pl
-	- minor changes to _search method
-	- added Benchmark.pl script for generating benchmarks in distro
-	- redesigned benchmarking script
+    0.51  Mon Apr 12 2004
+	- fixed bug with next_key method called without first_key
+	- added tests for this bug
+	- added "heavy" test to distribution
+	- minor optimizations of delete method
+	- assertions are no longer required (which leads to ~3% speedup)
+	  and removed section in POD about assertions
+	- removed commented-out references to forward method
+	- minor updates to source code comments
 
     A detailed revision history is in the Changes file included with
     this distribution.
