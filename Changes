@@ -1,5 +1,26 @@
 Revision history for Perl extension List::SkipList.
 
+0.40  Wed Mar 17 2004
+	- added Benchmark file to distribution
+	* key_cmp now ignores when key is undefined
+	- _insert returns the value of $node->key_cmp($key)
+	- broke up test cases into separate files
+	- added finger caching to speed up sequential inserts
+	- fixed bugs with values, keys, copy, merge, first_key and next_key
+          methods related to use of search fingers
+	- fixed bug with append method
+	- fixed bug with search fingers: they were not being used
+	- _debug now prints to STDERR
+	* reset method is not called when a new node is added or deleted
+          (which is in accord with documentation)
+	- stub for next method added
+	- List::SkipList::Node ignores invalid and extra arguments
+	- minor optimizations in List::SkipList and List::SkipList::Node
+	- improved speed of _random_level
+	- disabled assertions (for 50% speed improvement!)
+	- inserted corrected comment in README about actual performance in
+	  comparison to trees
+
 0.33  Tue Mar 16 2004
 	- fixed typos in test cases that caused Makefile tests to fail
 	- removed causes of warnings in 01-SkipList.t

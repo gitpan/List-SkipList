@@ -26,42 +26,11 @@ sub key_cmp {
   return ($left <=> $right);
 }
 
-package MemoizedNode;
-
-# This is here really to test an example that was in the v0.30
-# POD. Example was removed but the test is left here anyway.
-
-use Carp::Assert;
-
-our @ISA = qw( List::SkipList::Node );
-
-sub new {
-    my $class = shift;
-    my $self  = $class->SUPER::new( @_ );
-
-    $self->{MEMORY} = { };
-
-    bless $self, $class;
-}
-
-sub key_cmp {
-  my $self = shift;
-  assert( UNIVERSAL::isa($self, "List::SkipList::Node") ), if DEBUG;
-
-  my $key = shift;
-
-  if (!exists $self->{MEMORY}->{$key}) {
-    $self->{MEMORY}->{$key} = $self->SUPER::key_cmp( $key );
-  }
-
-  return $self->{MEMORY}->{$key};
-}
-
 package main;
 
 use Test;
-BEGIN { plan tests => 460 };
-use List::SkipList 0.32;
+BEGIN { plan tests => 305 };
+use List::SkipList 0.34;
 ok(1); # If we made it this far, we're ok.
 
 my $n = new List::SkipList::Node( key => 123, value => 987 );
@@ -90,7 +59,6 @@ ok( ref($c) eq "List::SkipList" );
 
 ok( $c->max_level == 32 );
 ok( $c->size      == 0 );
-
 
 my %TESTDATA1 = (
  'aaa' => 100,
@@ -123,6 +91,7 @@ foreach my $key (keys %TESTDATA1) {
   ok( $c->find($key) == ($value+1) );
 }
 
+
 $c->clear;
 $Size = 0;
 ok( $c->size == 0 );
@@ -154,6 +123,7 @@ foreach my $key (sort keys %TESTDATA1) {
 
 }
 
+
 foreach my $key (keys %TESTDATA1) {
   $value = $TESTDATA1{ $key };
   ok( defined $value );
@@ -165,6 +135,7 @@ foreach my $key (keys %TESTDATA1) {
 
   ok( $c->size == $Size );
 }
+
 
 foreach my $key (reverse sort keys %TESTDATA1) {
   $value = $TESTDATA1{ $key };
@@ -186,6 +157,7 @@ foreach my $key (reverse sort keys %TESTDATA1) {
   $c->insert($key, $value );
 
 }
+
 
 # v0.03 we added ability to define custom nodes
 
@@ -213,6 +185,7 @@ while (my $next = $d->next_key($last)) {
   $last = $next;
 }
 
+
 # Same tests, with fingers
 
 {
@@ -235,165 +208,7 @@ while (my $next = $d->next_key($last)) {
   ok($count == $size);
 }
 
+
 # Testing memoized node example
 
-my $e = new List::SkipList( node_class => 'MemoizedNode' );
-ok( ref($e) eq "List::SkipList");
 
-foreach my $key (keys %TESTDATA1) {
-  $value = $TESTDATA1{ $key };
-
-  ok(! $e->exists($key) );
-
-  $e->insert($key, $value );
-
-  ok( $e->exists($key) );
-  ok( $e->find($key) == $value );
-
-  $e->insert($key, $value+1 );
-  ok( $e->find($key) == ($value+1) );
-}
-
-# We build two lists and merge them
-
-my $f = new List::SkipList( node_class => 'NumericNode' );
-ok( ref($f) eq "List::SkipList");
-
-foreach my $i (qw( 1 3 5 7 9 )) {
-  my $finger = $f->insert($i, $i);
-  ok($f->find($i, $finger), $i);   # test return of fingers from insertion
-}
-ok($f->size,5);
-
-$f->merge($f);
-ok($f->size,5);
-
-my $g = new List::SkipList( node_class => 'NumericNode' );
-ok( ref($g) eq "List::SkipList");
-
-foreach my $i (qw( 2 4 6 8 10 )) {
-  $g->insert($i, $i);
-}
-ok($g->size,5);
-
-$f->merge($g);
-ok($f->size,10);
-
-foreach my $i (1..10) {
-  ok($f->find($i), $i);
-}
-
-# redefine $g
-
-foreach my $i (qw( 2 4 6 8 10 )) {
-  $g->insert($i, -$i);
-}
-ok($g->size,5);
-
-$g->merge($g);
-ok($g->size,5);
-
-# We want to test that mergine does not overwrite original values
-
-$g->merge($f);
-ok($g->size,10);
-
-foreach my $i (1..10) {
-  ok($g->find($i), (($i%2)?$i:-$i) );
-}
-
-{
-  my ($k,$v) = $g->least;
-  ok($k, 1);
-  ok($v, 1);
-
-  ($k, $v) = $g->greatest;
-  ok($k,10);
-  ok($v, -10);
-}
-
-$f->clear;
-ok($f->size,0);
-
-$f->append($g);
-ok($f->size,$g->size);
-
-$f->clear;
-ok($f->size,0);
-
-$f->insert(-1, -1);
-$f->insert(-2, 2);
-
-ok($f->size, 2);
-
-$f->append($g);
-
-ok($f->size, 2+$g->size);
-
-foreach my $i (-2..10) {
-  ok($f->find($i), (($i%2)?$i:-$i) ), if ($i);
-}
-
-{
-  my ($k1,$v1) = $g->greatest;
-  my ($k2,$v2) = $f->greatest;
-  ok($k1, $k2);
-  ok($v1, $v2);
-}
-
-my $z = $f->copy;
-ok($z->size, $f->size);
-
-foreach my $i (-2..10) {
-  ok($z->find($i), (($i%2)?$i:-$i) ), if ($i);
-}
-
-$z->clear;
-ok($z->size, 0);
-
-$z->append( $f->copy );
-ok($z->size, $f->size);
-
-foreach my $i (-2..10) {
-  ok($z->find($i), (($i%2)?$i:-$i) ), if ($i);
-}
-
-{
-  my @keys = $g->keys;
-  ok(scalar @keys, $g->size);
-
-  foreach my $i (1..10) {
-    ok($i, $keys[$i-1]); }
-
-  ok(scalar $g->first_key, shift @keys);
-  while (@keys) { ok($g->next_key, shift @keys); }
-
-  my @vals = $g->values;
-
-  foreach my $i (1..10) {
-    ok($g->find($i), $vals[$i-1]); }
-}
-
-
-
-# For completion sake, we added the ability to tie
-
-tie my %hash, 'List::SkipList';
-
-my $h = tied %hash;
-ok(ref($h), 'List::SkipList');
-ok($h->size,0);
-
-$hash{abc} = 2;
-
-ok($hash{abc}, 2);
-
-ok($h->size, 1);
-ok($h->find('abc'), 2);
-
-delete $hash{'abc'};
-
-ok($h->size, 0);
-ok(!$h->find('abc'));
-
-# TODO: More tests should be added

@@ -48,6 +48,10 @@ DESCRIPTION
       asymptotic expected time bounds as balanced trees and are
       simpler, faster and use less space.
 
+    (This particular implementation may not necessarily be faster or
+    use less space, but in superficial testing, it does appear to be a
+    reasonably faster substitute for some tree modules.)
+
     Skip lists are similar to linked lists, except that they have
     random links at various levels that allow searches to skip over
     sections of the list, like so:
@@ -64,13 +68,31 @@ DESCRIPTION
     A search would start at the top level: if the link to the right
     exceeds the target key, then it descends a level.
 
-    Skip lists generally perform as well as balanced trees for searching but
-    do not have the overhead with respect to inserting new items.
-
     More information is available in the module documentation.
 
 REVISION HISTORY
     Changes since v0.31:
+
+    0.40  Wed Mar 17 2004
+	- added Benchmark file to distribution
+	* key_cmp now ignores when key is undefined
+	- _insert returns the value of $node->key_cmp($key)
+	- broke up test cases into separate files
+	- added finger caching to speed up sequential inserts
+	- fixed bugs with values, keys, copy, merge, first_key and next_key
+          methods related to use of search fingers
+	- fixed bug with append method
+	- fixed bug with search fingers: they were not being used
+	- _debug now prints to STDERR
+	* reset method is not called when a new node is added or deleted
+          (which is in accord with documentation)
+	- stub for next method added
+	- List::SkipList::Node ignores invalid and extra arguments
+	- minor optimizations in List::SkipList and List::SkipList::Node
+	- improved speed of _random_level
+	- disabled assertions (for 50% speed improvement!)
+	- inserted corrected comment in README about actual performance in
+	  comparison to trees
 
     0.33  Tue Mar 16 2004
 	- fixed typos in test cases that caused Makefile tests to fail
@@ -82,6 +104,9 @@ REVISION HISTORY
 	- added Build.PL to distribution
         - updated README
 	- corrected and updated POD
+
+    Versions 0.32 and 0.33 were removed from CPAN because of problems
+    found after uploading the modules.
 
     A detailed revision history is in the Changes file included with
     this distribution.
