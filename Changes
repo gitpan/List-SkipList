@@ -1,6 +1,24 @@
 Revision history for Perl extension List::SkipList. (Changes which may
 not be backwards compatible are marked with an asterisk '*'.)
 
+0.50  Mon Mar 29 2004
+	- section about Assertions added to POD
+	- documented level() method
+	- clear method now intitializes initial node header
+	- added various assertions
+	* removed the forward method from *::Node
+	- uses enum module
+	- added test for non-integer keys
+	- clear method now resets LAST_INSRT cache
+	- removed use of LEVEL for List::SkipList::Node
+	* key_cmp method accesses KEY directly rather than uses the key method
+	* calling convention for List::SkipList::Node is changed
+	- various optimizations to List::SkipList and *::Node
+	- added comparison to Tree::RedBlack in Benchmark.pl
+	- minor changes to _search method
+	- added Benchmark.pl script for generating benchmarks in distro
+	- redesigned benchmarking script
+
 0.42  Sat Mar 20 2004
 	- fixed bug with Build.PL not autospliting files
 

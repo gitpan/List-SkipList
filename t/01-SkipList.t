@@ -29,11 +29,11 @@ sub key_cmp {
 package main;
 
 use Test;
-BEGIN { plan tests => 305 };
-use List::SkipList 0.34;
+BEGIN { plan tests => 315 };
+use List::SkipList 0.50;
 ok(1); # If we made it this far, we're ok.
 
-my $n = new List::SkipList::Node( key => 123, value => 987 );
+my $n = new List::SkipList::Node( 123, 987 );
 ok( ref($n) eq "List::SkipList::Node" );
 ok( $n->key == 123 );
 ok( $n->value == 987 );
@@ -112,6 +112,7 @@ foreach my $key (sort keys %TESTDATA1) {
   ok( $c->find($key) == $value );
 
   ($aux_value, $finger) = $c->find($key, $finger);
+  ok( defined $aux_value );
   ok( $aux_value == $value );
   ok( defined $finger );
 
@@ -185,7 +186,6 @@ while (my $next = $d->next_key($last)) {
   $last = $next;
 }
 
-
 # Same tests, with fingers
 
 {
@@ -208,7 +208,18 @@ while (my $next = $d->next_key($last)) {
   ok($count == $size);
 }
 
+# Test decimal keys
+{
+  $d->clear;
 
-# Testing memoized node example
+  no integer;
+  my $PI = 3.14159;
+  $d->insert($PI, -999);
+  ok($d->find($PI) == -999);
+  ok(! $d->find(int($PI)));
+}
+
+
+
 
 

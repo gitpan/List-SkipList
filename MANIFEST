@@ -1,4 +1,3 @@
-Benchmark.txt
 Build.PL
 Changes
 Makefile.PL
@@ -9,4 +8,6 @@ lib/List/SkipList.pm
 t/01-SkipList.t
 t/02-SkipList-tie.t
 t/02-SkipList-merge_append.t
+etc/Benchmark.pl
+etc/Benchmark.txt
 

@@ -48,9 +48,11 @@ DESCRIPTION
       asymptotic expected time bounds as balanced trees and are
       simpler, faster and use less space.(*)
 
-    (This particular implementation may not necessarily be faster or
+    This particular implementation may not necessarily be faster or
     use less space, but in superficial testing, it does appear to be a
-    reasonably faster substitute for some tree modules.)
+    reasonably faster substitute for some tree modules.  See the
+    included Benchmark.txt file for comparisons with other Perl
+    modules.
 
     Skip lists are similar to linked lists, except that they have
     random links at various levels that allow searches to skip over
@@ -74,18 +76,25 @@ DESCRIPTION
         <http://en.wikipedia.org/wiki/Skip_list>
 
 REVISION HISTORY
-    Changes since v0.40:
+    Changes since v0.42:
 
-    0.42  Sat Mar 20 2004
-	- fixed bug with Build.PL not autospliting files
-
-    0.41  Fri Mar 19 2004
-	* List::SkipList::Node is now array-based rather than hash-based
-	  to improve speed.
-	- updates to POD, README, Benchmark.txt
-	- added search method as alias to find
-	- renamed Benchmark to Benchmark.txt
-	- optimized deletions
+    0.50  Mon Mar 29 2004
+	- section about Assertions added to POD
+	- documented level() method
+	- clear method now intitializes initial node header
+	- added various assertions
+	* removed the forward method from *::Node
+	- uses enum module
+	- added test for non-integer keys
+	- clear method now resets LAST_INSRT cache
+	- removed use of LEVEL for List::SkipList::Node
+	* key_cmp method accesses KEY directly rather than uses the key method
+	* calling convention for List::SkipList::Node is changed
+	- various optimizations to List::SkipList and *::Node
+	- added comparison to Tree::RedBlack in Benchmark.pl
+	- minor changes to _search method
+	- added Benchmark.pl script for generating benchmarks in distro
+	- redesigned benchmarking script
 
     A detailed revision history is in the Changes file included with
     this distribution.

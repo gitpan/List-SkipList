@@ -4,166 +4,109 @@ use 5.006;
 use strict;
 use warnings;
 
-use Carp qw(carp croak);
+# use Carp qw(carp croak);
 no Carp::Assert;
 
 our $VERSION
- = '1.00_1';
+ = '1.10_1';
 
-use constant NODEARGLIST => {
-  key    => 1,
-  value  => 1,
-  header => 1,
-};
-
-use constant HEADER => 0;
-use constant LEVEL  => 1;
-use constant KEY    => 2;
-use constant VALUE  => 3;
+use enum qw( HEADER KEY VALUE );
 
 sub new {
   my $class = shift;
   my $self  = [ ];
-     $self->[HEADER] = [ ];
-     $self->[LEVEL]  = 0;
-     $self->[KEY]    = undef;
-     $self->[VALUE]  = undef;
 
   bless $self, $class;
 
-  {
-    my %args = @_;
-
-    if (DEBUG) {
-      foreach my $arg_name (CORE::keys %args) {
-	if (NODEARGLIST->{$arg_name}) {
-	  $self->$arg_name( $args{ $arg_name } );
-	} else {
-	  croak "Invalid parameter name: ``$arg_name\'\'";
-	}
-      }
-    } else {
-
-      # It's better to hard-code these in here and ignore invalid
-      # arguments for the speed improvement!
-
-      $self->key(    $args{key}    );
-      $self->value(  $args{value}  );
-      $self->header( $args{header} );
-    }
-  }
+  $self->key(    shift        );
+  $self->value(  shift        );
+  $self->header( shift || [ ] );
 
   return $self;
 }
 
 sub header {
-  my $self = shift;
-  assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
+  my ($self, $hdr) = @_;
 
-  if (@_) {
-    if (ref($_[0]) eq "ARRAY") {
-      $self->[HEADER] = shift;
-#      carp "Extra arguments ignored", if (@_);
-    } else {
-      $self->[HEADER] = \ @_;
-    }
-    $self->[LEVEL] = scalar @{ $self->[HEADER] };
-  } else {
-    return wantarray ? @{$self->[HEADER]} : $self->[HEADER];
-  }
+  assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
+  assert( (!$hdr) || ref($hdr) eq "ARRAY" ), if DEBUG;
+
+  # OPT: This method should really call forward for each item, but
+  # that's less efficient.
+
+  return ($hdr) ? ($self->[HEADER] = $hdr) : $self->[HEADER];
 }
 
 sub level {
-  my $self = shift;
+  my ($self) = @_;
   assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
-#  return scalar @{$self->[HEADER]};
-  return $self->[LEVEL];
+  return scalar( @{$self->[HEADER]} );
 }
 
-sub forward
-  {
-    my $self = shift;
-    assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
-
-    my $level = shift;
-    assert (($level >= 0) ), if DEBUG;
-
-    if (@_) {
-      my $next = shift;
-
-      assert( (!defined $next) || UNIVERSAL::isa($next, __PACKAGE__) ),
-	if DEBUG;
-
-      $self->[HEADER]->[$level] = $next;
-      if ($level >= $self->[LEVEL]) {
-	$self->[LEVEL] = 1+$level;
-      }
-    } else {
-      return $self->[HEADER]->[$level];
-    }
-
-  }
+# sub forward {
+#   my ($self, $level, $next) = @_;
+# 
+#   assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
+#   assert (($level >= 0) ), if DEBUG;
+# 
+#   assert( (!defined $next) || UNIVERSAL::isa($next, __PACKAGE__) ),
+#     if DEBUG;
+# 
+#   return (@_ > 2) ?
+#     ($self->[HEADER]->[$level] = $next) : $self->[HEADER]->[$level];
+# }
 
 sub validate_key {
-  my $self = shift;
+  my ($self) = @_;
   assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
   return 1;
 }
 
 sub key {
-  my $self = shift;
-  assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
+  my ($self, $key) = @_;
 
-  if (@_) {
-    my $key = shift;
-    assert( $self->validate_key( $key ) ), if DEBUG;
-    $self->[KEY] = $key;
-#    carp "Extra arguments ignored", if (@_);
-  } else {
-    return $self->[KEY];
-  }
+  assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
+  assert( (@_==1) || $self->validate_key( $key ) ), if DEBUG;
+
+  return (@_ > 1) ? ( $self->[KEY] = $key ) : $self->[KEY];
 }
 
 sub key_cmp {
-  my $self = shift;
+  my ($self, $right) = @_;
   assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
 
-  my $left  = $self->key;
-  my $right = shift;
-
   assert( $self->validate_key( $right ) ), if DEBUG;
-#  unless (defined $left) { return -1; } # we don't need this
+#  unless (defined $left) { return -1; } # OPT: we don't need this?
 
-  return ($left cmp $right);
+  # OPT: It would be nice to use $self->key instead of $self->[KEY],
+  # but we gain a nearly 25% speed improvement!
+
+  return ($self->[KEY] cmp $right);
 }
 
 sub validate_value {
-  my $self = shift;
+  my ($self) = @_;
   assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
   return 1;
 }
 
 sub value {
-  my $self = shift;
-  assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
+  my ($self, $value) = @_;
 
-  if (@_) {
-    my $value = shift;
-    assert( $self->validate_value( $value ) ), if DEBUG;
-    $self->[VALUE] = $value;
-#    carp "Extra arguments ignored", if (@_);
-  } else {
-    return $self->[VALUE];
-  }
+  assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
+  assert( (@_==1) || $self->validate_value( $value ) ), if DEBUG;
+
+  return (@_ > 1) ? ( $self->[VALUE] = $value ) : $self->[VALUE];
 }
+
 
 package List::SkipList;
 
 use 5.006;
 use strict;
-use warnings;
+use warnings; # should we register warnings?
 
-our $VERSION = '0.42';
+our $VERSION = '0.50';
 
 use AutoLoader qw( AUTOLOAD );
 use Carp qw( carp croak );
@@ -233,31 +176,34 @@ sub _set_node_class {
 
 sub _node_class
   {
-    my $self = shift;
+    my ($self) = @_;
     assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
     return $self->{NODECLASS};
   }
 
 sub reset {
-  my $self = shift;
+  my ($self) = @_;
   assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
   $self->{LASTKEY}  = undef;
 }
 
 sub clear {
-  my $self = shift;
+  my ($self) = @_;
   assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
 
-  $self->{LIST} = undef;
+  my @header = ( undef ) x $self->_random_level;
 
-  my $list = $self->_node_class->new ( header => [
-     map { undef } (1..$self->_random_level)] );
+  $self->{LIST} = $self->_node_class->new ( undef, undef, \@header );
 
-  assert( UNIVERSAL::isa($list, BASE_NODE_CLASS) ), if DEBUG;
+  assert( $self->list->level > 0 ), if DEBUG;
 
-  $self->{LIST}     = $list;
+  assert( UNIVERSAL::isa($self->{LIST}, BASE_NODE_CLASS) ), if DEBUG;
+
   $self->{SIZE}     = 0;
   $self->{LASTNODE} = undef;
+
+  $self->{LASTINSRT} = undef,
+    if (CACHE_INSERT_FINGERS);
 
   $self->reset;
 }
@@ -271,7 +217,7 @@ sub _set_max_level {
 }
 
 sub max_level {
-  my $self = shift;
+  my ($self) = @_;
   assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
   return $self->{MAXLEVEL};
 }
@@ -281,7 +227,7 @@ sub _set_p {
 
   my $self = shift;
   assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
-
+  
   my $p = shift;
   assert( ($p>0) && ($p<1) ), if DEBUG;
 
@@ -299,8 +245,7 @@ sub _set_p {
   $self->{P_LEVELS} = [ ]; 
 
   while ($level <= $max) {
-    assert( $self->{P_LEVELS}->[$level-1] > $self->{P_LEVELS}->[$level] ),
-      if DEBUG;
+    # TODO: add assertion that [level]<[level-1]
     $self->{P_LEVELS}->[$level++] = $n;
     $n *= $p;
   }
@@ -309,41 +254,40 @@ sub _set_p {
 sub p {
   no integer;
 
-  my $self = shift;
+  my ($self) = @_;
   assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
   return $self->{P};
 }
 
 sub size {
-  my $self = shift;
+  my ($self) = @_;
   assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
   return $self->{SIZE};
 }
 
 sub list {
-  my $self = shift;
+  my ($self) = @_;
   assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
   return $self->{LIST};
 }
 
 sub level {
-  my $self = shift;
+  my ($self) = @_;
   assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
   return $self->list->level;
 }
 
-
 sub _random_level {
   no integer;
 
-  my $self = shift;
+  my ($self) = @_;
   assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
 
   my $n     = rand();
   my $max   = $self->max_level;
   my $level = 1;
 
-  while ( ($level < $max) && ($n < $self->{P_LEVELS}->[$level]) ) {
+  while ( ($n < $self->{P_LEVELS}->[$level]) && ($level < $max)) {
     $level++;
   }
 
@@ -352,18 +296,23 @@ sub _random_level {
 }
 
 sub _search {
-  my $self   = shift;
+  my ($self, $key, $finger_ref) = @_;
+
   assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
+  assert( (!defined $finger_ref) || UNIVERSAL::isa($finger_ref, "ARRAY") ),
+    if DEBUG;
 
   my $list   = $self->list;
   my $level  = $list->level-1;
 
-  my $key    = shift;
+  assert( UNIVERSAL::isa( $list, BASE_NODE_CLASS ) ), if DEBUG;
+  assert( $level >= 0 ), if DEBUG;
 
-  my $finger = shift || [map { $list } (0..$level)];
-  assert( UNIVERSAL::isa($finger, "ARRAY") ), if DEBUG;
+  my @finger = ($finger_ref) ? @$finger_ref : ( );
 
-  my $x      = $finger->[ $level ] || $list;
+  my $x = $finger[ $level ] || $list;
+
+  assert( defined $x ), if DEBUG;
 
   # Iteresting Perl syntax quirk:
   #   do { my $x = ... } while ($x)
@@ -371,32 +320,34 @@ sub _search {
 
   my $cmp = 0;
 
+  # OPT: Benchmark shows that "my $fwd" w/in loop ~25% slower
+
+  my $fwd = undef;
+
+  use integer;
+
   do {
-    my $fwd = $x->forward($level);
-       $cmp = (defined $fwd) ? $fwd->key_cmp($key) : 1; 
-    if ($cmp > 0) {
-      if ($level >= 0) {
-	$finger->[$level] = $x;
-	$level--;
-      }
-    } else {
-      $finger->[$level] = $x;
+    $fwd = $x->header()->[$level]; # OPT: was $x->forward($level);
+    $cmp = (defined $fwd) ? $fwd->key_cmp($key) : 1; 
+    if ($cmp <= 0) {
+      $finger[$level] = $x;
       $x = $fwd;
+    } elsif ($level >= 0) {
+      $finger[$level--] = $x;
     }
-  } while (($level>=0) && ($cmp != 0));
+  } while (($cmp != 0) && ($level>=0));
 
   assert( UNIVERSAL::isa($x, BASE_NODE_CLASS) ), if DEBUG;
 
-  return ($x, $finger, $cmp);
+  return ($x, \@finger, $cmp);
 }
 
 sub insert {
-  my $self = shift;
+  my ($self, $key, $value, $finger) = @_;
+
   assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
 
   my $list   = $self->list;
-
-  my ($key, $value, $finger) = @_;
 
   # We save the node and finger of the last insertion. If the next key
   # is larger, then we can use the "finger" to speed up insertions.
@@ -431,15 +382,22 @@ sub insert {
       $update_ref->[ $list->level ] = $list;
     }
 
-    my $node = $self->_node_class->new( key => $key, value => $value );
+    my $node     = $self->_node_class->new( $key, $value );
+    my $node_hdr = $node->header();
 
-    for (my $i=$new_level-1;$i>=0;$i--) {
-      $node->forward($i, $update_ref->[$i]->forward($i) );	  
-      $update_ref->[$i]->forward($i,$node);
+    for (my $i=0;$i<$new_level;$i++) {
+      $node_hdr->[$i] = $update_ref->[$i]->header()->[$i];
+      $update_ref->[$i]->header()->[$i] = $node;
+
+# OPT: using forward method should be better, but...
+
+#      $node->forward($i, $update_ref->[$i]->forward($i));	  
+#      $update_ref->[$i]->forward($i,$node);
+
     }
 
     $self->{LASTNODE} = $node,
-      unless (defined $node->forward(0));
+      unless (defined $node->header()->[0]); # OPT: was $node->forward(0);
 
     $self->{LASTINSRT} = [$node, $update_ref],
       if (CACHE_INSERT_FINGERS);
@@ -451,41 +409,42 @@ sub insert {
 
 sub delete {
 
-  my $self = shift;
+  my ($self, $key, $finger) = @_;
+
   assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
-
-  my $key  = shift;
   assert( defined $key ), if DEBUG;
-
-  my $finger = shift;
 
   if (defined $finger) {
     assert( UNIVERSAL::isa($finger, "ARRAY") ), if DEBUG;
   }
+
+  my $list = $self->list;
 
   my ($x, $update_ref, $cmp) = $self->_search($key, $finger);
 
   if ($cmp == 0) {
     my $value = $x->value;
 
-    my $level = $x->level; 
-    assert($level <= @{$update_ref}), if DEBUG;
+    my $level = $x->level-1; 
+    assert($level < @{$update_ref}), if DEBUG;
 
-    for (my $i=$level-1; $i>=0; $i--) {
+    for (my $i=$level; $i>=0; $i--) {
 
-      my $y   = $update_ref->[$i];
+      my $y   = $update_ref->[$i] || $list;
 
       # The top level of the finger points to the current node. The
       # lower levels should be set to that node if they point to the
       # start of the list.
 
-      if ($y == $self->list) { $y = $update_ref->[$level-1]; }
+      if ($y == $list) { $y = $update_ref->[$level]; }
 
-      while ((my $fwd=$y->forward($i)) != $x) {
+# OPT: was      while ((my $fwd=$y->forward($i)) != $x) {
+      while ((my $fwd=$y->header()->[$i]) != $x) {
 	$y = $fwd;
 	assert( UNIVERSAL::isa($y, BASE_NODE_CLASS) ), if DEBUG;
       }
-      $y->forward($i, $x->forward($i)); 
+# OPT: was      $y->forward($i, $x->forward($i)); 
+      $y->header()->[$i] = $x->header()->[$i]; # forward($i, $x->forward($i)); 
 
     }
 
@@ -511,11 +470,8 @@ sub delete {
 
 sub exists {
 
-  my $self = shift;
+  my ($self, $key, $finger) = @_;
   assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
-
-  my $key    = shift;
-  my $finger = shift;
 
   if (defined $finger) {
     assert( UNIVERSAL::isa($finger, "ARRAY") ), if DEBUG;
@@ -526,11 +482,8 @@ sub exists {
 }
 
 sub find {
-  my $self = shift;
+  my ($self, $key, $finger) = @_;
   assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
-
-  my $key    = shift;
-  my $finger = shift;
 
   if (defined $finger) {
     assert( UNIVERSAL::isa($finger, "ARRAY") ), if DEBUG;
@@ -546,7 +499,7 @@ sub find {
 }
 
 sub last_key {
-  my $self = shift;
+  my ($self) = @_;
   assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
 
   if (defined $self->{LASTKEY}) {
@@ -558,14 +511,14 @@ sub last_key {
 }
 
 sub first_key {
-  my $self = shift;
+  my ($self) = @_;
   assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
 
   my $list = $self->list;
-  my $fwd  = $list->forward(0);
+  my $fwd  = $list->header()->[0]; # OPT: forward(0);
   if (defined $fwd) {
     $self->{LASTKEY} =
-      [$fwd->key, [map { $list } (1..$list->level)] ];
+      [$fwd->key, [( $list ) x $list->level] ];
     return $self->last_key;
   } else {
     return;
@@ -573,11 +526,8 @@ sub first_key {
 }
 
 sub next_key {
-  my $self = shift;
+  my ($self, $last_key, $finger) = @_;
   assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
-
-  my $last_key = shift;
-  my $finger   = shift;
 
   unless (defined $last_key) {
     ($last_key, $finger) = @{$self->{LASTKEY}};
@@ -590,7 +540,7 @@ sub next_key {
   if (defined $last_key) {
     my ($list, $update_ref, $cmp) = $self->_search($last_key, $finger);
 
-    my $fwd  = $list->forward(0);
+    my $fwd  = $list->header()->[0]; # OPT: forward(0);
  
     if ($cmp == 0) {
       if (defined $fwd) {
@@ -636,7 +586,7 @@ sub _first_node { # actually this is the second node
   assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
 
   my $list = $self->list;
-  my $fwd  = $list->forward(0);
+  my $fwd  = $list->header()->[0]; # OPT: forward(0);
   if (defined $fwd) {
     return ($fwd, scalar $list->header);
   } else {
@@ -667,6 +617,12 @@ sub greatest {
   } else {
     return;
   }
+}
+
+sub prev {
+  my $self = shift;
+  assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
+  die "unimplemented method";
 }
 
 sub next {
@@ -752,22 +708,24 @@ sub merge {
     if ($cmp < 0) {                     # key1 < key2
       if (defined $node1) {
 	$finger1 = $list1->insert( $node1->key, $node1->value, );
-	$node1 = $node1->forward(0);
+	$node1 = $node1->header()->[0]; # OPT: forward(0);
       } else {
 	$finger1 = $list1->insert( $node2->key, $node2->value, );
-	$node2 = $node2->forward(0);
+	$node2 = $node2->header()->[0]; # OPT: forward(0);
       }
     } elsif ($cmp > 0) {                # key1 > key2
       if (defined $node2) {
 	$finger1 = $list1->insert( $node2->key, $node2->value, );
-	$node2 = $node2->forward(0);
+	$node2 = $node2->header()->[0]; # OPT: forward(0);
       } else {
 	$finger1 = $list1->insert( $node1->key, $node1->value, );
-	$node1 = $node1->forward(0);
+	$node1 = $node1->header()->[0]; # OPT: forward(0);
       }
     } else {                            # key1 = key2
-      $node1 = $node1->forward(0), if defined $node1;
-      $node2 = $node2->forward(0), if defined $node2;
+      $node1 = $node1->header()->[0], # OPT: forward(0),
+	if defined $node1;
+      $node2 = $node2->header()->[0], # OPT: forward(0),
+	if defined $node2;
     }
   }
 }
@@ -793,24 +751,24 @@ sub append {
       if ($list1->level < $list1->max_level) {
 
 	my $i = $list1->level;
-	while (!defined $list1->list->forward($i)) { $i--; }
-	$list1->list->forward($i+1, $next);
+	while (!defined $list1->list->header()->[$i]) { $i--; }
+	$list1->list->header()->[$i+1] = $next; # OPT: forward($i+1, $next);
       } else {
 	my $i = $list1->level-1;
-	my $x = $list1->list->forward($i);
-	while (defined $x->forward($i)) {
-	  $x = $x->forward($i);
+	my $x = $list1->list->header()->[$i];
+	while (defined $x->header()->[$i]) {
+	  $x = $x->header()->[$i];
 	}
-	$x->forward($i, $next);
+	$x->header()->[$i] = $next; # OPT: forward($i, $next);
       }
-      $node->forward(0, $next);
+      $node->header()->[0] = $next; # OPT: forward(0, $next);
 
     } else {
       for (my $i=0; $i<$node->level; $i++) {
-	$node->forward($i, $next );
+	$node->header()->[$i] = $next; # OPT: forward($i, $next );
       }
       for (my $i=$list1->level; $i<$list2->level; $i++) {
-	$list1->list->forward($i, $next);
+	$list1->list->header()->[$i] = $next; # OPT: forward($i, $next);
       }
     }
 
@@ -837,11 +795,12 @@ sub _debug {
       $list->key||'undef', "=", $list->value||'undef'," ", $list,"\n";
 
     for(my $i=0; $i<$list->level; $i++) {
-      print STDERR " ", $i," ", $list->forward($i) || 'undef', "\n";
+      print STDERR " ", $i," ", $list->header()->[$i] # OPT: forward($i)
+	|| 'undef', "\n";
     }
     print STDERR "\n";
 
-    $list = $list->forward(0);
+    $list = $list->header()->[0]; # OPT: forward(0);
   }
 
 }
@@ -1208,6 +1167,14 @@ C<List::SkipList::Node> (See L<below|/"Node Methods">.)
 
 The key and value for this node are undefined.
 
+=item level
+
+  $level = $list->level;
+
+Returns the number of levels in the list.  It is the same as
+
+  $level = $list->list->level;
+
 =item _first_node
 
   ($node, $finger) = _first_node;
@@ -1251,10 +1218,12 @@ are for internal use by the main C<Lists::SkipList> module.
 
 =item new
 
-  $node = new List::SkipList::Node( key => $key, value => $value,
-                                    header => \@header );
+  $node = new List::SkipList::Node( $key, $value, $header );
 
 Creates a new node for the list.  The parameters are optional.
+
+Note that the versions 0.42 and earlier used a different calling
+convention.
 
 =item key
 
@@ -1287,8 +1256,8 @@ L<custom node class|/"Customizing the Node Class">.
 Used by L</"value"> to validate that a key is valid.  Returns true if it
 is ok, false otherwise.
 
-By default this is a dummy routine.  Redefine it to validate keys if
-you need it when L</"Customizing the Node Class">.
+By default this is a dummy routine.  Redefine and enable L</Assertions>
+it to validate keys if you need it when L</"Customizing the Node Class">.
 
 =item value
 
@@ -1307,40 +1276,24 @@ When used with an argument, sets the node's value.
 Used by L</"value"> to validate that value is valid.  Returns true if it
 is ok, false otherwise.
 
-By default this is a dummy routine.  Redefine it to validate values if
-you need it when L</"Customizing the Node Class">.
+By default this is a dummy routine.  Redefine it and enable L</Assertions>
+to validate values if you need it when L</"Customizing the Node Class">.
 
 =item header
 
-  @header = $node->header;
-
   $header_ref = $node->header;
 
-Returns the forward list (see C<forward>) array of the node. This is
-an array of nodes which point to the node returned, where each index
-in the array refers to the level.  That is,
-
-  $header[$i] == $list->forward($i)
-
-Where C<$i> is between 0 and C<level>.
-
-  $node->header( @header );
+Returns the forward list array of the node. This is an array of nodes
+which point to the node returned, where each index in the array refers
+to the level.
 
   $node->header( $header_ref );
 
-When used with an argument, sets the forward list.  Unlike the
-C<forward> method, it does not check if list elements are of the
-correct type.
+When used with an argument, sets the forward list.  It does not check
+if list elements are of the correct type.
 
-=item forward
-
-  $next = $node->forward( $level );
-
-Returns the next node associated with the level.
-
-  $node->forward( $level, $next );
-
-Sets the next node associated with the level.
+Note that the interface has changed. This method only accepts or
+returns header references.
 
 =item level
 
@@ -1467,6 +1420,21 @@ One thing that differentiates this module from other modules is the
 flexibility in defining a custom node class.
 
 See the included C<Benchmark.txt> file for performance comparisons.
+
+=head2 Assertions
+
+By default, assertions are now disabled since this leads to a speed
+improvement of over 50%.
+
+To enable assertions (especially to aid in diagnosing bugs), modify
+the F<SkipList.pm> source code and change lines for the Node and
+SkipList packages to:
+
+  no Carp::Assert;
+
+to
+
+  use Carp::Assert;
 
 =head1 TODO
 
