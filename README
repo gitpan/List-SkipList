@@ -40,13 +40,13 @@ SYNOPSIS
 
 DESCRIPTION
     This is an implementation of skip lists in Perl.  What are "skip
-    lists"?  From WikiPedia <http://en.wikipedia.org/wiki/Skip_list>:
+    lists"?
 
       Skip lists are a probabilistic data structure that seem likely
       to supplant balanced trees as the implementation method of
       choice for many applications. Skip list algorithms have the same
       asymptotic expected time bounds as balanced trees and are
-      simpler, faster and use less space.
+      simpler, faster and use less space.(*)
 
     (This particular implementation may not necessarily be faster or
     use less space, but in superficial testing, it does appear to be a
@@ -70,43 +70,19 @@ DESCRIPTION
 
     More information is available in the module documentation.
 
+    (*) Bill Pugh, inventor of skip lists.  Quoted from WikiPedia
+        <http://en.wikipedia.org/wiki/Skip_list>
+
 REVISION HISTORY
-    Changes since v0.31:
+    Changes since v0.40:
 
-    0.40  Wed Mar 17 2004
-	- added Benchmark file to distribution
-	* key_cmp now ignores when key is undefined
-	- _insert returns the value of $node->key_cmp($key)
-	- broke up test cases into separate files
-	- added finger caching to speed up sequential inserts
-	- fixed bugs with values, keys, copy, merge, first_key and next_key
-          methods related to use of search fingers
-	- fixed bug with append method
-	- fixed bug with search fingers: they were not being used
-	- _debug now prints to STDERR
-	* reset method is not called when a new node is added or deleted
-          (which is in accord with documentation)
-	- stub for next method added
-	- List::SkipList::Node ignores invalid and extra arguments
-	- minor optimizations in List::SkipList and List::SkipList::Node
-	- improved speed of _random_level
-	- disabled assertions (for 50% speed improvement!)
-	- inserted corrected comment in README about actual performance in
-	  comparison to trees
-
-    0.33  Tue Mar 16 2004
-	- fixed typos in test cases that caused Makefile tests to fail
-	- removed causes of warnings in 01-SkipList.t
-	- replaced explicit package names with __PACKAGE__ placeholder
-
-    0.32  Mon Mar 15 2004
-	- renamed test.pl to t/01-SkipList.t
-	- added Build.PL to distribution
-        - updated README
-	- corrected and updated POD
-
-    Versions 0.32 and 0.33 were removed from CPAN because of problems
-    found after uploading the modules.
+    0.41  Fri Mar 19 2004
+	* List::SkipList::Node is now array-based rather than hash-based
+	  to improve speed.
+	- updates to POD, README, Benchmark.txt
+	- added search method as alias to find
+	- renamed Benchmark to Benchmark.txt
+	- optimized deletions
 
     A detailed revision history is in the Changes file included with
     this distribution.

@@ -8,7 +8,7 @@ use Carp qw(carp croak);
 no Carp::Assert;
 
 our $VERSION
- = '0.06';
+ = '1.00_1';
 
 use constant NODEARGLIST => {
   key    => 1,
@@ -16,13 +16,19 @@ use constant NODEARGLIST => {
   header => 1,
 };
 
+use constant HEADER => 0;
+use constant LEVEL  => 1;
+use constant KEY    => 2;
+use constant VALUE  => 3;
+
 sub new {
   my $class = shift;
-  my $self  = {
-    HEADER => [ ],   # Pointers to next nodes
-    KEY    => undef, # Key
-    VALUE  => undef, # Value
-  };
+  my $self  = [ ];
+     $self->[HEADER] = [ ];
+     $self->[LEVEL]  = 0;
+     $self->[KEY]    = undef;
+     $self->[VALUE]  = undef;
+
   bless $self, $class;
 
   {
@@ -56,20 +62,22 @@ sub header {
 
   if (@_) {
     if (ref($_[0]) eq "ARRAY") {
-      $self->{HEADER} = shift;
+      $self->[HEADER] = shift;
 #      carp "Extra arguments ignored", if (@_);
     } else {
-      $self->{HEADER} = \ @_;
+      $self->[HEADER] = \ @_;
     }
+    $self->[LEVEL] = scalar @{ $self->[HEADER] };
   } else {
-    return wantarray ? @{$self->{HEADER}} : $self->{HEADER};
+    return wantarray ? @{$self->[HEADER]} : $self->[HEADER];
   }
 }
 
 sub level {
   my $self = shift;
   assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
-  return scalar @{$self->{HEADER}};
+#  return scalar @{$self->[HEADER]};
+  return $self->[LEVEL];
 }
 
 sub forward
@@ -86,10 +94,12 @@ sub forward
       assert( (!defined $next) || UNIVERSAL::isa($next, __PACKAGE__) ),
 	if DEBUG;
 
-      $self->{HEADER}->[$level] = $next;
-
+      $self->[HEADER]->[$level] = $next;
+      if ($level >= $self->[LEVEL]) {
+	$self->[LEVEL] = 1+$level;
+      }
     } else {
-      return $self->{HEADER}->[$level];
+      return $self->[HEADER]->[$level];
     }
 
   }
@@ -107,10 +117,10 @@ sub key {
   if (@_) {
     my $key = shift;
     assert( $self->validate_key( $key ) ), if DEBUG;
-    $self->{KEY} = $key;
+    $self->[KEY] = $key;
 #    carp "Extra arguments ignored", if (@_);
   } else {
-    return $self->{KEY};
+    return $self->[KEY];
   }
 }
 
@@ -140,10 +150,10 @@ sub value {
   if (@_) {
     my $value = shift;
     assert( $self->validate_value( $value ) ), if DEBUG;
-    $self->{VALUE} = $value;
+    $self->[VALUE] = $value;
 #    carp "Extra arguments ignored", if (@_);
   } else {
-    return $self->{VALUE};
+    return $self->[VALUE];
   }
 }
 
@@ -153,7 +163,7 @@ use 5.006;
 use strict;
 use warnings;
 
-our $VERSION = '0.40';
+our $VERSION = '0.41';
 
 use AutoLoader qw( AUTOLOAD );
 use Carp qw( carp croak );
@@ -403,7 +413,6 @@ sub insert {
     }
   }
 
-
   my ($x, $update_ref, $cmp) = $self->_search($key, $finger);    
 
   if ($cmp == 0) {
@@ -424,7 +433,7 @@ sub insert {
 
     my $node = $self->_node_class->new( key => $key, value => $value );
 
-    for (my $i=0;$i<$new_level;$i++) {
+    for (my $i=$new_level-1;$i>=0;$i--) {
       $node->forward($i, $update_ref->[$i]->forward($i) );	  
       $update_ref->[$i]->forward($i,$node);
     }
@@ -462,18 +471,26 @@ sub delete {
     my $level = $x->level; 
     assert($level <= @{$update_ref}), if DEBUG;
 
-    for (my $i=0; $i<$level; $i++) {
+    for (my $i=$level-1; $i>=0; $i--) {
 
-      my $y = $update_ref->[$i];
-      while ((my $fwd = $y->forward($i)) != $x) {
-	$y = $fwd; # $y->forward($i);
+      my $y   = $update_ref->[$i];
+
+      # The top level of the finger points to the current node. The
+      # lower levels should be set to that node if they point to the
+      # start of the list.
+
+      if ($y == $self->list) { $y = $update_ref->[$level-1]; }
+
+      while ((my $fwd=$y->forward($i)) != $x) {
+	$y = $fwd;
 	assert( UNIVERSAL::isa($y, BASE_NODE_CLASS) ), if DEBUG;
       }
       $y->forward($i, $x->forward($i)); 
+
     }
 
     # There's probably a smarter way to handle this, but this is the
-    # safest way.\
+    # safest way.
 
     $self->{LASTINSRT} = undef,
       if (CACHE_INSERT_FINGERS);
@@ -602,10 +619,12 @@ BEGIN
     *STORE   = \&insert;
     *FETCH   = \&find;
     *EXISTS  = \&exists;
-    *CLEAR   = \*clear;
-    *DELETE  = \*delete;
-    *FIRSTKEY = \*first_key;
-    *NEXTKEY = \*next_key;
+    *CLEAR   = \&clear;
+    *DELETE  = \&delete;
+    *FIRSTKEY = \&first_key;
+    *NEXTKEY = \&next_key;
+
+    *search  = \&find;
   }
 
 1;
@@ -870,8 +889,8 @@ exceeds the target key, then it descends a level.
 
 Skip lists generally perform as well as balanced trees for searching
 but do not have the overhead with respect to inserting new items.  See
-the included file C<Benchmark> for a comparison of performance with
-other Perl modules.
+the included file C<Benchmark.txt> for a comparison of performance
+with other Perl modules.
 
 For more information on skip lists, see the L</"SEE ALSO"> section below.
 
@@ -959,6 +978,10 @@ L<Search fingers|/"About Search Fingers"> may also be used:
 To obtain the search finger for a key, call C<find> in a list context:
 
   ($value, $finger) = $list->find( $key );
+
+=item search
+
+Search is an alias to L</find>.
 
 =item first_key
 
@@ -1439,6 +1462,11 @@ point to the previous key.
 
 Some of these methods (least, greatest) are autoloading because they
 are not commonly used.
+
+One thing that differentiates this module from other modules is the
+flexibility in defining a custom node class.
+
+See the included C<Benchmark.txt> file for performance comparisons.
 
 =head1 TODO
 

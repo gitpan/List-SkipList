@@ -1,4 +1,13 @@
-Revision history for Perl extension List::SkipList.
+Revision history for Perl extension List::SkipList. (Changes which may
+not be backwards compatible are marked with an asterisk '*'.)
+
+0.41  Fri Mar 19 2004
+	* List::SkipList::Node is now array-based rather than hash-based
+	  to improve speed.
+	- updates to POD, README, Benchmark.txt
+	- added search method as alias to find
+	- renamed Benchmark to Benchmark.txt
+	- optimized deletions
 
 0.40  Wed Mar 17 2004
 	- added Benchmark file to distribution
