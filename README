@@ -81,6 +81,29 @@ DESCRIPTION
 REVISION HISTORY
     Changes since v0.65:
 
+    0.71_01 Wed Jun  9 2004
+	- fixed bug in benchmarks (was deleting bogus keys)
+	- added some warnings
+	- improved delete method
+	- added truncate method
+	- _search_with_finger now builds correct update vector
+	- append calls _adjust_level_threshold
+	- minor optimizations of node class
+	* renamed internal key {LASTNODE} to {LIST_END} so as not to
+	  be confused with last_key method
+	- _first_node is not autoloading since it's now used by first_key
+	- updated POD to reflect issue with undefined values
+	- improved copy method (undef values handled)
+	- copy method can accept an argument: copy from key
+	* copy method no longer resets first_key
+	* _first_node no longer returns a finger (it was never used)
+	- updated documentation on values for max_level and p
+	- corrected typos in documentation
+	- added tests for deleted greatest bug
+	- fixed bug with greatest method when deleting last node
+	- added _greatest_node method to find the last node as needed
+	- other minor code changes
+
     0.70_01 Sun Jun  6 2004 
 	- tests rewritten (work in progress)
 	- fixed bug with next_key checking node when key was deleted
@@ -111,10 +134,19 @@ REVISION HISTORY
     A detailed revision history is in the Changes file included with
     this distribution.
 
-CAVEATS
-    Skip lists are non-deterministic.  Because of this, bugs in programs
+KNOWN ISSUES
+  The following issues are known:
+
+  * If you already have a version before 0.70 installed, it may be a
+    good idea to uninstall it before installing the latest version,
+    since there are some changes to autoloading methods.
+
+  * Skip lists are non-deterministic.  Because of this, bugs in programs
     that use this module may be subtle and difficult to reproduce without
     many repeated attempts.
+
+  See http://rt.cpan.org/NoAuth/Bugs.html?Dist=List-SkipList for any
+  additional issues.
 
 AUTHOR
     Robert Rothenberg <rrwo at cpan.org>

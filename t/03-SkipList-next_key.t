@@ -10,7 +10,10 @@ ok(1);
 
 my $List = new List::SkipList;
 
-ok(!defined $List->first_key); # make sure this returns nothing
+{
+  no warnings;
+  ok(!defined $List->first_key); # make sure this returns nothing
+}
 
 my @data = sort (0..(SIZE-1)); # test '0' as key for last_key
 

@@ -38,7 +38,10 @@ my %Hash  = ();
 my %Bogus = ();
 my $List  = new List::SkipList;
 
-ok(!defined $List->first_key);
+{
+  no warnings;
+  ok(!defined $List->first_key);
+}
 
 foreach (1..SIZE) {
   my $k;
@@ -176,12 +179,16 @@ foreach my $key (sort keys %Hash) {
 foreach my $key (sort keys %Hash) {
   ok($key eq $Copy->first_key);
   ok(defined $Copy->delete($key));
-  ok(!defined $Copy->next_key);
+  {
+    no warnings;
+    ok(!defined $Copy->next_key);
+  };
 }
 
 {
   my $sz = $List->size();
   foreach my $key (keys %Bogus) {
+    no warnings;
     ok( !defined $List->delete( $key ) );
   }
   ok($List->size == $sz);

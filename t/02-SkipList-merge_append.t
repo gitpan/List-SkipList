@@ -30,7 +30,7 @@ sub key_cmp {
 
 package main;
 
-use Test::More tests => 134;
+use Test::More tests => 254;
 use List::SkipList 0.70;
 
 # We build two lists and merge them
@@ -172,24 +172,62 @@ foreach my $i (-2..10) {
 }
 
 
-# For completion sake, we added the ability to tie
+{
+  my $g = new List::SkipList( node_class => 'NumericNode' );
 
-tie my %hash, 'List::SkipList';
+  foreach (20..29) {
+    $g->insert( $_, 1+$g->size );
+  }
+  
+  my $count = $g->size;
+  foreach my $key (20..29) {
+    ok( defined $g->find($key), "verify key in g" );
+    my $h = $g->copy( $key );
+    ok( defined $h,           "verify h is defined" );
 
-my $h = tied %hash;
-ok(ref($h) eq 'List::SkipList');
-ok($h->size == 0);
+    ok( $h->size == $count,   "verify size of h" );
+    ok( ($h->least)[0] == $key );
+    ok( ($h->least)[1] == $g->find($key) );
 
-$hash{abc} = 2;
+    if ($key <= 28) {
+      my $h = $g->copy( $key, undef, 28 );
+      ok( defined $h, "verify h is defined" );
 
-ok($hash{abc} == 2);
+      ok( $h->size == ($count-1), "verify size of h" );
+      ok( ($h->least)[0] == $key );
+      ok( ($h->least)[1] == $g->find($key) );
+    }
 
-ok($h->size == 1);
-ok($h->find('abc') == 2);
+    $count--;
+  }
 
-delete $hash{'abc'};
 
-ok($h->size == 0);
-ok(!$h->find('abc'));
+  my $h = $g->copy(19);
+  ok(! defined $h);
 
-# TODO: More tests should be added
+  $h = $g->copy(30);
+  ok(! defined $h);
+}
+
+{
+  foreach my $i (20..29) {
+    my $g = new List::SkipList( node_class => 'NumericNode' );
+
+    foreach (20..29) {
+      $g->insert( $_, 1+$g->size );
+    }
+
+    my $size = $g->size;
+
+    my $h = $g->truncate($i);
+    ok(defined $h);
+    ok($size == ($h->size + $g->size));
+
+    my $gn = $g->_greatest_node;
+    my $hn = $h->_first_node;
+
+    ok( $hn->key_cmp($i) == 0 );
+    ok( $hn->key_cmp($gn->key) == 1 ), if ($gn->key);
+  }
+  
+}

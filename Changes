@@ -1,6 +1,29 @@
 Revision history for Perl extension List::SkipList. (Changes which may
 not be backwards compatible are marked with an asterisk '*'.)
 
+0.71_01 Wed Jun  9 2004
+	- fixed bug in benchmarks (was deleting bogus keys)
+	- added some warnings
+	- improved delete method
+	- added truncate method
+	- _search_with_finger now builds correct update vector
+	- append calls _adjust_level_threshold
+	- minor optimizations of node class
+	* renamed internal key {LASTNODE} to {LIST_END} so as not to
+	  be confused with last_key method
+	- _first_node is not autoloading since it's now used by first_key
+	- updated POD to reflect issue with undefined values
+	- improved copy method (undef values handled)
+	- copy method can accept an argument: copy from key
+	* copy method no longer resets first_key
+	* _first_node no longer returns a finger (it was never used)
+	- updated documentation on values for max_level and p
+	- corrected typos in documentation
+	- added tests for deleted greatest bug
+	- fixed bug with greatest method when deleting last node
+	- added _greatest_node method to find the last node as needed
+	- other minor code changes
+
 0.70_01 Sun Jun  6 2004 
 	- tests rewritten (work in progress)
 	- fixed bug with next_key checking node when key was deleted
@@ -10,7 +33,7 @@ not be backwards compatible are marked with an asterisk '*'.)
 	- fixed bug where level sometimes exceeded user-set max level
 	- P and max_level can now be set dynamically
 	- added tests for max_level and p
-	- checks for error when setting P
+	- checks for error when setting max_level or P
 	- fixed bug with definition of List::SkipList::Null
 	- $NULL is now an 'our' variable and accessible from outside
 	- level method was changed to autoload, since it was redundant

@@ -113,7 +113,7 @@ timethis( 1,
 
 if ($Obj->can("delete")) { timethis( 1,
  sub {
-   foreach my $key (@BogusKeys) {
+   foreach my $key (@RandomKeys) {
      $Obj->delete($key);
    }
  }, "<<module>>::delete" );
