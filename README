@@ -1,5 +1,5 @@
 NAME
-    List::SkipList - Perl implementation of skip lists
+    Algorithm::SkipList - Perl implementation of skip lists
 
 REQUIREMENTS
     Perl 5.6.1 is required.
@@ -32,7 +32,7 @@ Installation
       perl Build install    
 
 SYNOPSIS
-      my $list = new List::SkipList();
+      my $list = new Algorithm::SkipList();
 
       $list->insert( 'key1', 'value' );
       $list->insert( 'key2', 'another value' );
@@ -79,14 +79,8 @@ DESCRIPTION
         <http://en.wikipedia.org/wiki/Skip_list>
 
 REVISION HISTORY
-    Changes since v0.71:
+    Changes since v0.73:
 
-    0.73    Mon Jul 26 2004
-	- rebuilt distribution with proper META.yml
-
-    0.72    Wed Jun 30 2004
-	- removed List::SkipList::Null type and $NULL variable
-	- moved Test::More from requires to build_requires parameter
 
     A detailed revision history is in the Changes file included with
     this distribution.
@@ -94,16 +88,15 @@ REVISION HISTORY
 KNOWN ISSUES
   The following issues are known:
 
-  * If you already have a version before 0.70 installed, it may be a
-    good idea to uninstall it before installing the latest version,
-    since there are some changes to autoloading methods.
+  * If you are upgrading a prior version of List::SkipList, then
+    you may want to uninstall the module before installing
+    Algorithm::SkipList, so as to remove unused autoloading files.
 
   * Skip lists are non-deterministic.  Because of this, bugs in programs
     that use this module may be subtle and difficult to reproduce without
     many repeated attempts.
 
-  See http://rt.cpan.org/NoAuth/Bugs.html?Dist=List-SkipList for any
-  additional issues.
+  See http://rt.cpan.org for any additional issues.
 
 AUTHOR
     Robert Rothenberg <rrwo at cpan.org>

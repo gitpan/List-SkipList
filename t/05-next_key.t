@@ -5,10 +5,10 @@ package main;
 use constant SIZE => 5;
 
 use Test::More tests => 6+(4*SIZE);
-use List::SkipList 0.70;
+use Algorithm::SkipList 0.70;
 ok(1);
 
-my $List = new List::SkipList;
+my $List = new Algorithm::SkipList;
 
 {
   no warnings;

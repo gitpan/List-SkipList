@@ -4,9 +4,9 @@ package main;
 
 use Test::More tests => 7;
 
-use List::SkipList 0.70;
+use Algorithm::SkipList 0.70;
 
-my $List = new List::SkipList;
+my $List = new Algorithm::SkipList;
 
 foreach ('A'..'D') {
   $List->insert($_, 1+$List->size);

@@ -2,7 +2,9 @@
 
 package IntegerNode;
 
-our @ISA = qw( List::SkipList::Node );
+require Algorithm::SkipList::Node;
+
+our @ISA = qw( Algorithm::SkipList::Node );
 
 sub validate_key {
   my ($self, $key) = @_;
@@ -22,12 +24,12 @@ package main;
 
 use Test::More tests => 82;
 
-use_ok("List::SkipList");
+use_ok("Algorithm::SkipList::PurePerl");
 
 for my $i (-1..1) {
   $n = new IntegerNode($i, 10-$i);
   ok($n->isa("IntegerNode"));
-  ok($n->isa("List::SkipList::Node"));
+  ok($n->isa("Algorithm::SkipList::Node"));
 
   ok($n->validate_key($i));
   ok($n->key == $i);
@@ -75,8 +77,8 @@ sub pred {
 
 my $c = 0;
 for my $i ('A'..'C') {
-  $n = new List::SkipList::Node($i, ++$c);
-  ok($n->isa("List::SkipList::Node"));
+  $n = new Algorithm::SkipList::Node($i, ++$c);
+  ok($n->isa("Algorithm::SkipList::Node"));
 
   ok($n->validate_key($i));
   ok($n->key eq $i);

@@ -6,12 +6,12 @@ use strict;
 
 use Test::More tests => 19;
 
-use List::SkipList 0.70;
+use Algorithm::SkipList 0.70;
 
 my $List;
 
 eval {
-  $List = new List::SkipList();
+  $List = new Algorithm::SkipList();
 };
 ok( defined $List );
 
@@ -25,7 +25,7 @@ my @values = $List->find_duplicates('x');
 ok( @values == 1);
 
 eval {
-  $List = new List::SkipList( duplicates => 0);
+  $List = new Algorithm::SkipList( duplicates => 0);
 };
 ok( defined $List );
 
@@ -43,7 +43,7 @@ ok( @values == 1);
 
 
 eval {
-  $List = new List::SkipList( duplicates => 1);
+  $List = new Algorithm::SkipList( duplicates => 1);
 };
 ok( defined $List );
 

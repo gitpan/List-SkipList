@@ -5,20 +5,23 @@ package main;
 use strict;
 use warnings;
 
-# use Pod::Coverage package => 'List::SkipList';
+# use Pod::Coverage package => 'Algorithm::SkipList';
 
 # These tests are redundant, but they are useful for "heavy" testing
 # to find rare errors (since this is a non-deterministic algorithm)
 # and for some informal benchmark comparisons.
 
-# For "heavy" testing, change size to a larger value (1,000 or 10,000).
+# For "heavy" testing, change size to a larger value (100 or 1,000 or 10,000).
 
-use constant SIZE => 100;
+use constant SIZE => 20;
 
-use Test::More tests => 6+(69*SIZE);
-use_ok("List::SkipList");
+use Test::More tests => 6+(73*SIZE);
 
-ok($List::SkipList::VERSION >= 0.72);
+use Test::Warn;
+
+use_ok("Algorithm::SkipList");
+
+ok($Algorithm::SkipList::VERSION >= 0.73);
 
 my @Keys = ();
 my $Cnt  = SIZE;
@@ -36,7 +39,7 @@ sub random_stuff {
 
 my %Hash  = ();
 my %Bogus = ();
-my $List  = new List::SkipList;
+my $List  = new Algorithm::SkipList;
 
 {
   no warnings;
@@ -48,10 +51,10 @@ foreach (1..SIZE) {
   do {
     $k = random_stuff();
   } while (exists $Bogus{ $k });
-  ok( List::SkipList::Node->validate_key($k) );
+  ok( Algorithm::SkipList::Node->validate_key($k) );
 
   my $v = random_stuff();
-  ok( List::SkipList::Node->validate_value($v) );
+  ok( Algorithm::SkipList::Node->validate_value($v) );
 
   $Hash{ $k } = $v;
 
@@ -59,28 +62,39 @@ foreach (1..SIZE) {
   do {
     $a = random_stuff();
   } while ($a eq $v);
-  ok( List::SkipList::Node->validate_value($a) );
+  ok( Algorithm::SkipList::Node->validate_value($a) );
 
   my $x;
   do {
     $x = random_stuff();
   } while (exists $Hash{ $v });
-  ok( List::SkipList::Node->validate_key($x) );
+  ok( Algorithm::SkipList::Node->validate_key($x) );
   $Bogus{ $x } = $a;
 
   ok( $List->list->key_cmp($k) == -1 );
-  ok( !defined $List->list->key );
-  ok( !defined $List->list->value );
-  $List->list->value($a);
-  ok( !defined $List->list->value );
+  warnings_are {
+    ok( !defined $List->list->key );
+  } {carped => "this method should never be run"}, "header accessor warning";
 
-#   ok( $List::SkipList::NULL->key_cmp($k) == 1 );
-#   ok( !defined $List::SkipList::NULL->key );
-#   ok( !defined $List::SkipList::NULL->value );
-#   $List::SkipList::NULL->value($a);
-#   ok( !defined $List::SkipList::NULL->value );
-#   ok( $List::SkipList::NULL->level == 0 );
-#   ok( !defined $List::SkipList::NULL->header );
+  warnings_are {
+    ok( !defined $List->list->value );
+  } {carped => "this method should never be run"}, "header accessor warning";
+
+  warnings_are {
+    $List->list->value($a);
+  } {carped => "this method should never be run"}, "header accessor warning";
+
+  warnings_are {
+    ok( !defined $List->list->value );
+  } {carped => "this method should never be run"}, "header accessor warning";
+
+#   ok( $Algorithm::SkipList::NULL->key_cmp($k) == 1 );
+#   ok( !defined $Algorithm::SkipList::NULL->key );
+#   ok( !defined $Algorithm::SkipList::NULL->value );
+#   $Algorithm::SkipList::NULL->value($a);
+#   ok( !defined $Algorithm::SkipList::NULL->value );
+#   ok( $Algorithm::SkipList::NULL->level == 0 );
+#   ok( !defined $Algorithm::SkipList::NULL->header );
 
 
   my $finger = $List->insert( $k, $a );

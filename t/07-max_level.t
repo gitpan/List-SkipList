@@ -6,41 +6,41 @@ use strict;
 
 use Test::More tests => 253;
 
-use List::SkipList 0.70;
+use Algorithm::SkipList 0.70;
 
-ok( List::SkipList::MIN_LEVEL == 2 );
-ok( List::SkipList::MAX_LEVEL == 32 );
+ok( Algorithm::SkipList::MIN_LEVEL == 2 );
+ok( Algorithm::SkipList::MAX_LEVEL == 32 );
 
 my $List;
 
 undef $List;
 eval {
-  $List = new List::SkipList( max_level => 33 );
+  $List = new Algorithm::SkipList( max_level => 33 );
 };
 ok( !defined $List );
 
 undef $List;
 eval {
-  $List = new List::SkipList( max_level => 1 );
+  $List = new Algorithm::SkipList( max_level => 1 );
 };
 ok( !defined $List );
 
 undef $List;
 eval {
-  $List = new List::SkipList( max_level => 0 );
+  $List = new Algorithm::SkipList( max_level => 0 );
 };
 ok( !defined $List );
 
 undef $List;
 eval {
-  $List = new List::SkipList( max_level => -1 );
+  $List = new Algorithm::SkipList( max_level => -1 );
 };
 ok( !defined $List );
 
 for my $level (2..32) {
   undef $List;
   eval {
-    $List = new List::SkipList( max_level => $level );
+    $List = new Algorithm::SkipList( max_level => $level );
   };
   ok( defined $List );
   ok( $List->max_level == $level );

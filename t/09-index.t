@@ -6,11 +6,11 @@ use strict;
 
 use Test::More tests => 30;
 
-use List::SkipList 0.71;
+use Algorithm::SkipList 0.71;
 
 my @Array = qw( A B C );
 
-my $List = new List::SkipList;
+my $List = new Algorithm::SkipList;
 
 foreach (@Array) {
   $List->insert($_, 1+$List->size);

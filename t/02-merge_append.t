@@ -4,11 +4,11 @@ package NumericNode;
 
 # use Carp::Assert;
 
-our @ISA = qw( List::SkipList::Node );
+our @ISA = qw( Algorithm::SkipList::Node );
 
 sub validate_key {
   my $self = shift;
-#  assert( UNIVERSAL::isa($self, "List::SkipList::Node") ), if DEBUG;
+#  assert( UNIVERSAL::isa($self, "Algorithm::SkipList::Node") ), if DEBUG;
 
   my $key = shift;
   return ($key =~ /^\-?\d+$/); # make sure key is simple natural number
@@ -16,7 +16,7 @@ sub validate_key {
 
 sub key_cmp {
   my $self = shift;
-#   assert( UNIVERSAL::isa($self, "List::SkipList::Node") ), if DEBUG;
+#   assert( UNIVERSAL::isa($self, "Algorithm::SkipList::Node") ), if DEBUG;
 
   my $left  = $self->key;
   my $right = shift;
@@ -30,13 +30,13 @@ sub key_cmp {
 
 package main;
 
-use Test::More tests => 265;
-use List::SkipList 0.70;
+use Test::More tests => 264;
+use Algorithm::SkipList 0.73;
 
 # We build two lists and merge them
 
-my $f = new List::SkipList( node_class => 'NumericNode' );
-ok( ref($f) eq "List::SkipList");
+my $f = new Algorithm::SkipList( node_class => 'NumericNode' );
+ok( ref($f) eq "Algorithm::SkipList");
 
 foreach my $i (qw( 1 3 5 7 9 )) {
   my $finger = $f->insert($i, $i);
@@ -47,8 +47,8 @@ ok($f->size == 5);
 $f->merge($f);
 ok($f->size == 5);
 
-my $g = new List::SkipList( node_class => 'NumericNode' );
-ok( ref($g) eq "List::SkipList");
+my $g = new Algorithm::SkipList( node_class => 'NumericNode' );
+ok( ref($g) eq "Algorithm::SkipList");
 
 foreach my $i (qw( 2 4 6 8 10 )) {
   $g->insert($i, $i);
@@ -175,7 +175,7 @@ foreach my $i (-2..10) {
 
 
 {
-  my $g = new List::SkipList( node_class => 'NumericNode' );
+  my $g = new Algorithm::SkipList( node_class => 'NumericNode' );
 
   foreach (20..29) {
     $g->insert( $_, 1+$g->size );
@@ -213,7 +213,7 @@ foreach my $i (-2..10) {
 
 {
   foreach my $i (20..29) {
-    my $g = new List::SkipList( node_class => 'NumericNode' );
+    my $g = new Algorithm::SkipList( node_class => 'NumericNode' );
 
     foreach (20..29) {
       $g->insert( $_, 1+$g->size );
@@ -228,9 +228,15 @@ foreach my $i (-2..10) {
     my $gn = $g->_greatest_node;
     my $hn = $h->_first_node;
 
-    ok( $hn->key_cmp($i) == 0 );
-    ok( $hn->key_cmp($gn->key) == 1 ), if ($gn->key);
-    ok( $gn->key_cmp($hn->key) == -1 ), if ($hn->key);
+    ok( $hn->key_cmp($i) == 0 ), if ($h->size);
+
+    unless ($gn->isa("Algorithm::SkipList::Header")) {
+      ok( $hn->key_cmp($gn->key) == 1 ), if ($gn->key);
+    }
+
+    unless ($hn->isa("Algorithm::SkipList::Header")) {
+      ok( $gn->key_cmp($hn->key) == -1 ), if ($hn->key);
+    }
   }
   
 }
