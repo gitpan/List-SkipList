@@ -12,8 +12,8 @@ use warnings;
 use constant SIZE => 100;
 
 use Test;
-BEGIN { plan tests => 2+(14*SIZE) };
-use List::SkipList 0.52;
+BEGIN { plan tests => 2+(16*SIZE) };
+use List::SkipList 0.63;
 ok(1);
 
 my @Keys = ();
@@ -51,7 +51,11 @@ foreach (1..SIZE) {
   ok( $List->find( $k, $finger ), $v );
   ok( $List->find_with_finger( $k, $finger ), $v );
 
-  my @results = $List->find_with_finger( $k, $finger );
+  my @results = $List->find( $k, $finger );
+  ok( @results == 1 );
+  ok( $results[0], $v );
+
+  @results = $List->find_with_finger( $k, $finger );
   ok( @results == 2 );
   ok( $results[0], $v );
   ok( ref( $results[1] ) eq "ARRAY" );

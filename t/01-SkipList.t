@@ -30,7 +30,7 @@ package main;
 
 use Test;
 BEGIN { plan tests => 315 };
-use List::SkipList 0.61;
+use List::SkipList 0.63;
 ok(1); # If we made it this far, we're ok.
 
 my $n = new List::SkipList::Node( 123, 987 );

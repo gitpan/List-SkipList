@@ -81,9 +81,22 @@ DESCRIPTION
 REVISION HISTORY
     Changes since v0.60:
 
+    0.63  Fri May 28 2004
+	- The default value of P is now 0.25, which appears to yield
+	  better results in tests.
+	* renamed _random_level to _new_node_level
+	- SIZE_THRESHOLD/SIZE_LEVEL now decrease with deletions
+	- additional minor optimizations and code cleanup
+	- optimizations of Header and Null node types
+	- updated tests
+	- Benchmark: re-commented-out delete test for Tree::RedBlack
+          (which was accidentally uncommented in v0.62)
+
     0.62  Tue May 18 2004
 	- fixed typo in (commented-out) assertion
 	- additional minor optimizations and code cleanup
+	- updated tests
+	- corrected README
 
     0.61  Mon May 17 2004
 	* find no longer returns a finger in array context

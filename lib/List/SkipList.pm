@@ -8,9 +8,9 @@ use warnings;
 # no Carp::Assert qw(assert DEBUG);
 
 our $VERSION
- = '1.33';
+ = '1.35';
 
-use enum qw( HEADER KEY VALUE );
+use enum qw( HEADER=0 KEY VALUE );
 
 sub new {
   my $class = shift;
@@ -69,7 +69,7 @@ sub key_cmp {
   # OPT: It would be nice to use $self->key instead of $self->[KEY],
   # but we gain a nearly 25% speed improvement!
 
-  ($self->[KEY] cmp $right);
+  $self->[KEY] cmp $right;
 }
 
 sub validate_value {
@@ -92,9 +92,10 @@ package List::SkipList::Header;
 use 5.006;
 use strict;
 use warnings;
+# use Carp::Assert qw( assert DEBUG );
 
 our $VERSION
- = '0.01';
+ = '0.02';
 
 our @ISA = qw( List::SkipList::Node );
 
@@ -103,10 +104,12 @@ sub key_cmp {
 }
 
 sub key {
+#    assert( 0 ), if DEBUG;
   return;
 }
 
 sub value {
+#    assert( 0 ), if DEBUG;
   return;
 }
 
@@ -115,30 +118,51 @@ package List::SkipList::Null;
 use 5.006;
 use strict;
 use warnings;
+# use Carp::Assert qw( assert DEBUG );
 
 our $VERSION
- = '0.01';
+ = '0.03';
 
-our @ISA = qw( List::SkipList::Header );
+our @ISA = qw( List::SkipList::Node );
+
+sub header {
+#    assert( 0 ), if DEBUG;
+  return;
+}
+
+sub level {
+#    assert( 0 ), if DEBUG;
+  return 0;
+}
 
 sub key_cmp {
   1;   # Note that the header returns "1" instead of "-1"!
+}
+
+sub key {
+#    assert( 0 ), if DEBUG;
+  return;
+}
+
+sub value {
+#    assert( 0 ), if DEBUG;
+  return;
 }
 
 package List::SkipList;
 
 use 5.006;
 use strict;
-use warnings; # should we register warnings?
+use warnings;
 
-our $VERSION = '0.62';
+our $VERSION = '0.63';
 
 use AutoLoader qw( AUTOLOAD );
 use Carp qw( carp croak );
 # no Carp::Assert qw(assert DEBUG);
 
 use constant MAX_LEVEL       => 32;
-use constant DEF_P           => 0.5;
+use constant DEF_P           => 0.25;
 
 use constant BASE_NODE_CLASS => 'List::SkipList::Node';
 
@@ -158,6 +182,7 @@ sub new {
     LIST      => undef,                 # pointer to the header node
     SIZE      => undef,                 # size of list
     SIZE_THRESHOLD => undef,            # size at which SIZE_LEVEL increased
+    LAST_SIZE_TH   => undef,            # previous SIZE_THRESHOLD
     SIZE_LEVEL     => undef,            # maximum level random_level
     MAXLEVEL  => MAX_LEVEL,             # absolute maximum level
     P         => 0,                     # probability for each level
@@ -213,9 +238,10 @@ sub clear {
 
   $self->{SIZE}     = 0;
   $self->{SIZE_THRESHOLD} = 2;
+  $self->{LAST_SIZE_TH}   = 0;
   $self->{SIZE_LEVEL}     = 2;
 
-  my @header = ( undef ) x $self->_random_level;
+  my @header = ( undef ) x $self->_new_node_level;
 
   $self->{LIST} = new List::SkipList::Header( undef, undef, \@header );
 
@@ -301,27 +327,32 @@ sub null {
   $NULL;
 }
 
-sub _random_level {
+sub _new_node_level { # previously _random_level
   no integer;
 
   my ($self) = @_;
 #   assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
 
-  # we call $self->{MAXLEVEL} instead of $self->max_level for very
-  # minor speed improvement
+  # Note: we call $self->{MAXLEVEL} instead of $self->max_level for
+  # very minor speed improvement.
 
   if ($self->{SIZE} >= $self->{SIZE_THRESHOLD}) {
+    $self->{LAST_SIZE_TH}    = $self->{SIZE_THRESHOLD};
     $self->{SIZE_THRESHOLD} += $self->{SIZE_THRESHOLD};
     $self->{SIZE_LEVEL}++, if ($self->{SIZE_LEVEL} < $self->{MAXLEVEL});
+  } elsif ($self->{SIZE} < $self->{LAST_SIZE_TH}) {
+    $self->{SIZE_THRESHOLD}  = $self->{LAST_SIZE_TH};
+    $self->{LAST_SIZE_TH}    = $self->{LAST_SIZE_TH} / 2;
+    $self->{SIZE_LEVEL}--;
+#     assert( $self->{LAST_SIZE_TH} == int($self->{LAST_SIZE_TH}) ), if DEBUG;
+#     assert( $self->{SIZE_LEVEL} >= 1 ), if DEBUG;
   }
 
-  my $n     = rand();
+  my $n     = CORE::rand();
   my $level = 1;
 
-  while (($n < $self->{P_LEVELS}->[$level]) && ($level < $self->{SIZE_LEVEL}))
-    {
-      $level++;
-    }
+  do { } while (($n < $self->{P_LEVELS}->[$level]) &&
+	 ($level++ < $self->{SIZE_LEVEL}));
 
 #   assert( ($level >= 1) && ($level <= $self->{SIZE_LEVEL}) ), if DEBUG;
   $level;
@@ -342,34 +373,35 @@ sub _search_with_finger {
 #   assert( UNIVERSAL::isa( $list, BASE_NODE_CLASS ) ), if DEBUG;
 #   assert( $level >= 0 ), if DEBUG;
 
-#  $finger_ref ||= [ ];
+  my $node   = $finger->[ $level ] || $list;
 
-  my $x = $finger->[ $level ] || $list;
-
-#   assert( defined $x ), if DEBUG;
+#   assert( defined $node ), if DEBUG;
 
   # Iteresting Perl syntax quirk:
   #   do { my $x = ... } while ($x)
   # doesn't work because it considers $x out of scope.
+  #
+  # However, benchmarking shows that it's faster to use
+  #   my $x; do { $x = ... } while ($x)
+  #
 
   my ($fwd, $cmp);
 
+  # This version of the search algorithm is based on Schneier, 1994.
+
   do {
-    $fwd = $x->header()->[$level] || $NULL;
-    $cmp = $fwd->key_cmp($key);
-
-    if ($cmp >= 0) {
-      $finger->[$level--] = $x;
+    while ( ($fwd = $node->header()->[$level]||$NULL) &&
+	    ($cmp = $fwd->key_cmp($key)) < 0) {
+      $node = $fwd;
     }
-    if ($cmp <= 0) {
-      $x = $fwd;
-    }
+    $finger->[$level] = $node;
+  } while (($cmp) && (--$level>=0));
 
-  } while (($cmp) && ($level>=0));
+  $node = $fwd, unless ($cmp);
+  
+  #   assert( UNIVERSAL::isa($node, BASE_NODE_CLASS) ), if DEBUG;
 
-  #   assert( UNIVERSAL::isa($x, BASE_NODE_CLASS) ), if DEBUG;
-
-  ($x, $finger, $cmp);
+  ($node, $finger, $cmp);
 }
 
 sub _search {
@@ -389,27 +421,26 @@ sub _search {
 
 #  $finger ||= [ ];
 
-  my $x = $finger->[ $level ] || $list;
+  my $node   = $finger->[ $level ]  || $list;
 
-#   assert( defined $x ), if DEBUG;
+#   assert( defined $node ), if DEBUG;
+
+  # This version of the search algorithm is based on Schneier, 1994.
 
   my ($fwd, $cmp);
 
   do {
-    $fwd = $x->header()->[$level] || $NULL;
-    $cmp = $fwd->key_cmp($key);
-
-    if ($cmp <= 0) {
-      $x = $fwd;
-    } else {
-      $level--;
+    while ( ($fwd = $node->header()->[$level]||$NULL) &&
+	    ($cmp = $fwd->key_cmp($key)) < 0) {
+      $node = $fwd;
     }
+  } while (($cmp) && (--$level>=0));
 
-  } while (($cmp) && ($level>=0));
+  $node = $fwd, unless ($cmp);
 
-  #   assert( UNIVERSAL::isa($x, BASE_NODE_CLASS) ), if DEBUG;
+  #   assert( UNIVERSAL::isa($node, BASE_NODE_CLASS) ), if DEBUG;
 
-  ($x, $finger, $cmp);
+  ($node, $finger, $cmp);
 }
 
 sub insert {
@@ -438,7 +469,7 @@ sub insert {
 
   if ($cmp) {
 
-    my $new_level = $self->_random_level;
+    my $new_level = $self->_new_node_level;
 
     my $node_hdr = [ ];
     my $fing_hdr;
@@ -542,7 +573,7 @@ sub exists {
 #     assert( UNIVERSAL::isa($finger, "ARRAY") ), if DEBUG;
 #   }
 
-  ( ($self->_search($key, $finger))[2] == 0 );
+  (($self->_search($key, $finger))[2] == 0);
 }
 
 sub find_with_finger {
@@ -988,15 +1019,17 @@ is 32.) It is generally a good idea to leave this value alone unless
 you are using small lists.
 
 The initial list (see the L</"list"> method) will be a
-L<random|/"_random_level"> number of levels, and will increase over time
+L<random|/"_new_node_level"> number of levels, and will increase over time
 if inserted nodes have higher levels.
 
 You can also control the probability used to determine level sizes for
 each node by setting the L<P|/"p"> value:
 
-  $list = new SkipList( p => 0.5 );
+  $list = new SkipList( p => 0.25 );
 
-The value defaults to C<0.5>.
+The value defaults to C<0.25>, which appears to be optimial.  Smaller
+values may reduce the average number of pointers per node but also
+reduce the efficiency of the algorithm.
 
 For more information on what these values mean, consult the references
 below in the L</"SEE ALSO"> section.
@@ -1287,11 +1320,11 @@ Returns the I<P> value.  Intended for internal use only.
 
   $max = $list->max_level;
 
-Returns the maximum level that L</_random_level> can generate.
+Returns the maximum level that L</_new_node_level> can generate.
 
-=item _random_level
+=item _new_node_level
 
-  $level = $list->_random_level;
+  $level = $list->_new_node_level;
 
 This is an internal function for generating a random level for new nodes.
 
@@ -1301,6 +1334,8 @@ node will have 1 level is I<P>; the probability that a node will have
 I<P^3>, et cetera.
 
 The value will never be greater than L</max_level>.
+
+Note: in earlier versions it was called C<_random_level>.
 
 =item list
 
@@ -1617,9 +1652,13 @@ under the same terms as Perl itself.
 
 =head1 SEE ALSO
 
-See the article "A Skip List Cookbook" (William Pugh, 1989), or
+See the article by William Pugh, "A Skip List Cookbook" (1989), or
 similar ones by the author at L<http://www.cs.umd.edu/~pugh/> which
 discuss skip lists.
+
+Another article worth reading is by Bruce Schneier, "Skip Lists:
+They're easy to implement and they work",
+L<Doctor Dobbs Journal|http://www.ddj.com>, January 1994.
 
 If you need a keyed list that preserves the order of insertion rather
 than sorting keys, see L<List::Indexed>.

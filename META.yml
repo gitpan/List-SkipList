@@ -1,6 +1,6 @@
 --- #YAML:1.0
 name: List-SkipList
-version: 0.62
+version: 0.63
 author:
   - Robert Rothenberg <rrwo at cpan.org>
 abstract: Perl implementation of skip lists
