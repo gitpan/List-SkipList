@@ -4,7 +4,7 @@ use warnings;
 use Benchmark;
 # use Devel::Size qw( size total_size );
 
-use List::SkipList 0.61;
+use List::SkipList 0.62;
 use Tree::Smart;
 use Tree::Ternary;
 use Tree::RedBlack;
@@ -138,7 +138,7 @@ timethese( COUNT, {
 timethese( COUNT, {
   'List::SkipList::delete' => make_sub($Sl, 'delete', \@RandomKeys),
   'Tree::Smart::delete' => make_sub($Ts, 'delete', \@RandomKeys),
-#  'Tree::RedBlack::delete ReverseKeys' => make_sub($Trb, 'delete', \@RandomKeys),
+ 'Tree::RedBlack::delete ReverseKeys' => make_sub($Trb, 'delete', \@RandomKeys),
 });
 
 

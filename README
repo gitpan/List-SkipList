@@ -79,27 +79,22 @@ DESCRIPTION
         <http://en.wikipedia.org/wiki/Skip_list>
 
 REVISION HISTORY
-    Changes since v0.51:
+    Changes since v0.60:
 
-    0.60  Sat Apr 24 2004
-	- updates to POD
-	- cleaned up comments
-	- added next function
-	- redid last_key, first_key and next_key functions
-	- last_key accepts arguments to modify LASTKEY
-	- changed calls to die to croak
-	- added experimental hooks to implement prev and prev_key methods
-	- added stub prev_key method
-	- bug fix: reset method called during copy method
-	- added more tests to heavy test script
-	* renamed find to find_with_finger and added find for searches
-          which do not return updated fingers
-	* renamed _search to _search_with_finger and added _search for
-	  searches which do not return updated fingers
-	- modified next_key test to check for initial key of "0"
-	- removed if (CACHE_INSERT_FINGERS) tests
-	- additional optimizations and code cleanup
-	- added test to search for non-existent keys in Benchmark.pl
+    0.62  Tue May 18 2004
+	- fixed typo in (commented-out) assertion
+	- additional minor optimizations and code cleanup
+
+    0.61  Mon May 17 2004
+	* find no longer returns a finger in array context
+	* header is now a special subclass of List::SkipList::Node
+	- added special Null subclass of Header
+	- added null() method to return global null node
+	- a lot of minor code optimizations
+	- added comments
+	- maximum level of new nodes changed so that it is based on size
+          of list
+	- updated Benchmark.txt file
 
     A detailed revision history is in the Changes file included with
     this distribution.

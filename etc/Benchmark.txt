@@ -48,6 +48,10 @@ Tree::RedBlack
     It claimed that after 10,000 inserted keys only 292 bytes were
     used.
 
+    In running Benchmark.pl with tests for the modules Tree::Smark and
+    Tree::Ternary commented out, Tree::RedBlack showed a noticeable
+    improvment.
+
 Tree::Smart
     Uses splay trees, which optimize themselves based on which nodes
     one uses most often.

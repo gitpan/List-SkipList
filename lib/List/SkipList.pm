@@ -5,10 +5,10 @@ use strict;
 use warnings;
 
 # use Carp qw(carp croak);
-# no Carp::Assert qw(assert);
+# no Carp::Assert qw(assert DEBUG);
 
 our $VERSION
- = '1.32';
+ = '1.33';
 
 use enum qw( HEADER KEY VALUE );
 
@@ -46,7 +46,7 @@ sub level {
 }
 
 sub validate_key {
-  my ($self) = @_;
+#   my ($self) = @_;
 #   assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
   1;
 }
@@ -73,7 +73,7 @@ sub key_cmp {
 }
 
 sub validate_value {
-  my ($self) = @_;
+#   my ($self) = @_;
 #   assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
   1;
 }
@@ -131,11 +131,11 @@ use 5.006;
 use strict;
 use warnings; # should we register warnings?
 
-our $VERSION = '0.61';
+our $VERSION = '0.62';
 
 use AutoLoader qw( AUTOLOAD );
 use Carp qw( carp croak );
-# no Carp::Assert qw(assert);
+# no Carp::Assert qw(assert DEBUG);
 
 use constant MAX_LEVEL       => 32;
 use constant DEF_P           => 0.5;
@@ -274,7 +274,7 @@ sub p {
 
   my ($self) = @_;
 #   assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
-  return $self->{P};
+  $self->{P};
 }
 
 sub size {
@@ -312,7 +312,7 @@ sub _random_level {
 
   if ($self->{SIZE} >= $self->{SIZE_THRESHOLD}) {
     $self->{SIZE_THRESHOLD} += $self->{SIZE_THRESHOLD};
-    $self->{SIZE_LEVEL}++, if ($self->{SIZE_LEVEL} < $self->max_level);
+    $self->{SIZE_LEVEL}++, if ($self->{SIZE_LEVEL} < $self->{MAXLEVEL});
   }
 
   my $n     = rand();
@@ -328,12 +328,12 @@ sub _random_level {
 }
 
 sub _search_with_finger {
-  my ($self, $key, $finger_ref) = @_;
+  my ($self, $key, $finger) = @_;
 
   use integer;
 
 #   assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
-#   assert( (!defined $finger_ref) || UNIVERSAL::isa($finger_ref, "ARRAY") ),
+#   assert( (!defined $finger) || UNIVERSAL::isa($finger, "ARRAY") ),
 #     if DEBUG;
 
   my $list   = $self->list;
@@ -344,7 +344,7 @@ sub _search_with_finger {
 
 #  $finger_ref ||= [ ];
 
-  my $x = $finger_ref->[ $level ] || $list;
+  my $x = $finger->[ $level ] || $list;
 
 #   assert( defined $x ), if DEBUG;
 
@@ -359,7 +359,7 @@ sub _search_with_finger {
     $cmp = $fwd->key_cmp($key);
 
     if ($cmp >= 0) {
-      $finger_ref->[$level--] = $x;
+      $finger->[$level--] = $x;
     }
     if ($cmp <= 0) {
       $x = $fwd;
@@ -369,16 +369,16 @@ sub _search_with_finger {
 
   #   assert( UNIVERSAL::isa($x, BASE_NODE_CLASS) ), if DEBUG;
 
-  ($x, $finger_ref, $cmp);
+  ($x, $finger, $cmp);
 }
 
 sub _search {
-  my ($self, $key, $finger_ref) = @_;
+  my ($self, $key, $finger) = @_;
 
   use integer;
 
 #   assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
-#   assert( (!defined $finger_ref) || UNIVERSAL::isa($finger_ref, "ARRAY") ),
+#   assert( (!defined $finger) || UNIVERSAL::isa($finger, "ARRAY") ),
 #     if DEBUG;
 
   my $list   = $self->list;
@@ -387,9 +387,9 @@ sub _search {
 #   assert( UNIVERSAL::isa( $list, BASE_NODE_CLASS ) ), if DEBUG;
 #   assert( $level >= 0 ), if DEBUG;
 
-#  $finger_ref ||= [ ];
+#  $finger ||= [ ];
 
-  my $x = $finger_ref->[ $level ] || $list;
+  my $x = $finger->[ $level ] || $list;
 
 #   assert( defined $x ), if DEBUG;
 
@@ -409,7 +409,7 @@ sub _search {
 
   #   assert( UNIVERSAL::isa($x, BASE_NODE_CLASS) ), if DEBUG;
 
-  ($x, $finger_ref, $cmp);
+  ($x, $finger, $cmp);
 }
 
 sub insert {
@@ -424,27 +424,29 @@ sub insert {
   # We save the node and finger of the last insertion. If the next key
   # is larger, then we can use the "finger" to speed up insertions.
 
-  if (!$finger) {
-    my ($node, $ref) = @{ $self->{LASTINSRT}||[ $list, [ ], ] };
-    
-    if ($node->key_cmp($key) < 0) {
-      $finger = $ref;
-    }
-  } else {
-#     assert( UNIVERSAL::isa($finger, "ARRAY") ), if DEBUG;
+  my ($node, $cmp);
+
+  unless ($finger) {
+    $node   = $self->{LASTINSRT}->[0] || $NULL;
+    $finger = $self->{LASTINSRT}->[1],
+      if ($node->key_cmp($key) <= 0);
   }
 
-  my ($x, $update_ref, $cmp) = $self->_search_with_finger($key, $finger);    
+#   assert( UNIVERSAL::isa($finger, "ARRAY") ), if DEBUG;
+
+  ($node, $finger, $cmp) = $self->_search_with_finger($key, $finger);
 
   if ($cmp) {
+
     my $new_level = $self->_random_level;
 
-    my $node     = $self->_node_class->new( $key, $value );
-    my $node_hdr = $node->header();
+    my $node_hdr = [ ];
     my $fing_hdr;
 
+    $node = $self->_node_class->new( $key, $value, $node_hdr );
+
     for (my $i=0;$i<$new_level;$i++) {
-      $fing_hdr = ($update_ref->[$i]||$list)->header();
+      $fing_hdr = ($finger->[$i]||$list)->header();
       $node_hdr->[$i] = $fing_hdr->[$i];
       $fing_hdr->[$i] = $node;
     }
@@ -459,15 +461,12 @@ sub insert {
 
     $self->{LASTNODE} = $node, unless ($node_hdr->[0]);
 
-    $self->{LASTINSRT} = [$node, $update_ref];
-
     $self->{SIZE}++;
   } else {
-    # TODO: implement "write-once" option?
-    $x->value($value);
-    $self->{LASTINSRT} = [$x, $update_ref];
+    $node->value($value);
   }
-  $update_ref;
+  $self->{LASTINSRT}->[0] = $node;
+  $self->{LASTINSRT}->[1] = $finger;
 }
 
 sub delete {
