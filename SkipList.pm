@@ -32,7 +32,7 @@ sub new {
 
 sub header {
   my $self = shift;
-  assert( ref($self) eq "List::SkipList::Node" ), if DEBUG;
+  assert( UNIVERSAL::isa($self, "List::SkipList::Node") ), if DEBUG;
 
   if (@_) {
     if (ref($_[0]) eq "ARRAY") {
@@ -49,14 +49,14 @@ sub header {
 
 sub level {
   my $self = shift;
-  assert( ref($self) eq "List::SkipList::Node" ), if DEBUG;
+  assert( UNIVERSAL::isa($self, "List::SkipList::Node") ), if DEBUG;
   return scalar @{$self->header()};
 }
 
 sub forward
   {
     my $self = shift;
-    assert( ref($self) eq "List::SkipList::Node" ), if DEBUG;
+    assert( UNIVERSAL::isa($self, "List::SkipList::Node") ), if DEBUG;
 
     my $level = shift;
     assert (($level >= 0) ), if DEBUG;
@@ -65,7 +65,8 @@ sub forward
 
     if (@_) {
       my $next = shift;
-      assert( !defined($next) || (ref($next) eq "List::SkipList::Node") ), if DEBUG;
+      assert( !defined($next) ||
+	      UNIVERSAL::isa($next, "List::SkipList::Node") ), if DEBUG;
 
       $hdr->[$level] = $next;
       $self->header( $hdr );
@@ -78,7 +79,7 @@ sub forward
 
 sub key {
   my $self = shift;
-  assert( ref($self) eq "List::SkipList::Node" ), if DEBUG;
+  assert( UNIVERSAL::isa($self, "List::SkipList::Node") ), if DEBUG;
 
   if (@_) {
     $self->{KEY} = shift;
@@ -90,7 +91,7 @@ sub key {
 
 sub key_cmp {
   my $self = shift;
-  assert( ref($self) eq "List::SkipList::Node" ), if DEBUG;
+  assert( UNIVERSAL::isa($self, "List::SkipList::Node") ), if DEBUG;
 
   my $left  = $self->key;
   my $right = shift;
@@ -102,7 +103,7 @@ sub key_cmp {
 
 sub value {
   my $self = shift;
-  assert( ref($self) eq "List::SkipList::Node" ), if DEBUG;
+  assert( UNIVERSAL::isa($self, "List::SkipList::Node") ), if DEBUG;
 
   if (@_) {
     $self->{VALUE} = shift;
@@ -117,7 +118,7 @@ sub value {
 
 # sub is_nil {
 #   my $self = shift;
-#   assert( ref($self) eq "List::SkipList::Node" ), if DEBUG;
+#   assert( UNIVERSAL::isa($self, "List::SkipList::Node") ), if DEBUG;
 # 
 #   my $level = $self->level;
 #   my $hdr   = $self->header;
@@ -136,7 +137,7 @@ use 5.006;
 use strict;
 use warnings;
 
-our $VERSION = '0.02';
+our $VERSION = '0.10';
 
 use Carp;
 use Carp::Assert;
@@ -151,16 +152,17 @@ sub new {
 
 
   my $self = {
-    LIST     => undef,
-    SIZE     => undef,
-    MAXLEVEL => MAX_LEVEL,
-    P        => DEF_P,
+    NODECLASS => 'List::SkipList::Node',
+    LIST      => undef,
+    SIZE      => undef,
+    MAXLEVEL  => MAX_LEVEL,
+    P         => DEF_P,
   };
 
   bless $self, $class;
 
   {
-    my %ARGLIST = ( map { $_ => 1 } qw( max_level p ) );
+    my %ARGLIST = ( map { $_ => 1 } qw( max_level p node_class ) );
     my %args = @_;
     foreach my $arg_name (keys %args) {
       if ($ARGLIST{$arg_name}) {
@@ -177,16 +179,30 @@ sub new {
   return $self;
 }
 
+sub _set_node_class {
+  my $self = shift;
+  assert( UNIVERSAL::isa($self, "List::SkipList") ), if DEBUG;
+  my $node_class = shift;
+  $self->{NODECLASS} = $node_class;
+}
+
+sub _node_class
+  {
+    my $self = shift;
+    assert( UNIVERSAL::isa($self, "List::SkipList") ), if DEBUG;
+    return $self->{NODECLASS};
+  }
+
 sub clear {
   my $self = shift;
-  assert( ref($self) eq "List::SkipList" ), if DEBUG;
+  assert( UNIVERSAL::isa($self, "List::SkipList") ), if DEBUG;
 
   $self->{LIST} = undef;
 
-  my $list = new List::SkipList::Node( header => [
-     map { undef } (1..$self->random_level)] );
+  my $list = $self->_node_class->new ( header => [
+     map { undef } (1..$self->_random_level)] );
 
-  assert( ref($list) eq "List::SkipList::Node" ), if DEBUG;
+  assert( UNIVERSAL::isa($list, "List::SkipList::Node") ), if DEBUG;
 
   $self->{LIST} = $list;
   $self->{SIZE} = 0;
@@ -194,7 +210,7 @@ sub clear {
 
 sub _set_max_level {
   my $self = shift;
-  assert( ref($self) eq "List::SkipList" ), if DEBUG;
+  assert( UNIVERSAL::isa($self, "List::SkipList") ), if DEBUG;
   my $level = shift;
   assert( ($level>1) ), if DEBUG;
   $self->{MAXLEVEL} = $level;
@@ -202,7 +218,7 @@ sub _set_max_level {
 
 sub max_level {
   my $self = shift;
-  assert( ref($self) eq "List::SkipList" ), if DEBUG;
+  assert( UNIVERSAL::isa($self, "List::SkipList") ), if DEBUG;
   return $self->{MAXLEVEL};
 }
 
@@ -210,7 +226,7 @@ sub _set_p {
   no integer;
 
   my $self = shift;
-  assert( ref($self) eq "List::SkipList" ), if DEBUG;
+  assert( UNIVERSAL::isa($self, "List::SkipList") ), if DEBUG;
 
   my $p = shift;
   assert( ($p>0) && ($p<1) ), if DEBUG;
@@ -222,34 +238,34 @@ sub p {
   no integer;
 
   my $self = shift;
-  assert( ref($self) eq "List::SkipList" ), if DEBUG;
+  assert( UNIVERSAL::isa($self, "List::SkipList") ), if DEBUG;
   return $self->{P};
 }
 
 sub size {
   my $self = shift;
-  assert( ref($self) eq "List::SkipList" ), if DEBUG;
+  assert( UNIVERSAL::isa($self, "List::SkipList") ), if DEBUG;
   return $self->{SIZE};
 }
 
 sub list {
   my $self = shift;
-  assert( ref($self) eq "List::SkipList" ), if DEBUG;
+  assert( UNIVERSAL::isa($self, "List::SkipList") ), if DEBUG;
   return $self->{LIST};
 }
 
 sub level {
   my $self = shift;
-  assert( ref($self) eq "List::SkipList" ), if DEBUG;
+  assert( UNIVERSAL::isa($self, "List::SkipList") ), if DEBUG;
   return $self->list->level;
 }
 
 
-sub random_level {
+sub _random_level {
   no integer;
 
   my $self = shift;
-  assert( ref($self) eq "List::SkipList" ), if DEBUG;
+  assert( UNIVERSAL::isa($self, "List::SkipList") ), if DEBUG;
 
   my $level = 1;
 
@@ -264,7 +280,7 @@ sub random_level {
 
 sub _search {
   my $self = shift;
-  assert( ref($self) eq "List::SkipList" ), if DEBUG;
+  assert( UNIVERSAL::isa($self, "List::SkipList") ), if DEBUG;
 
   my $list = $self->list;
 
@@ -293,14 +309,14 @@ sub _search {
 
   } while (($level>=0) && ($x->key_cmp($key) != 0));
 
-  assert( ref($x) eq "List::SkipList::Node" ), if DEBUG;
+  assert( UNIVERSAL::isa($x, "List::SkipList::Node") ), if DEBUG;
 
   return ($x, \@update);
 }
 
 sub insert {
   my $self = shift;
-  assert( ref($self) eq "List::SkipList" ), if DEBUG;
+  assert( UNIVERSAL::isa($self, "List::SkipList") ), if DEBUG;
 
   my $list   = $self->list;
 
@@ -315,7 +331,7 @@ sub insert {
       $x->value($value);
     } else {
 
-      my $new_level = $self->random_level;
+      my $new_level = $self->_random_level;
 
       if ($new_level > $list->level) {
 
@@ -324,7 +340,7 @@ sub insert {
 	}
       }
 
-      my $node = new List::SkipList::Node( key => $key, value => $value );
+      my $node = $self->_node_class->new( key => $key, value => $value );
 
       for (my $i=0;$i<$new_level;$i++) {
 
@@ -347,7 +363,7 @@ sub insert {
 sub delete {
 
   my $self = shift;
-  assert( ref($self) eq "List::SkipList" ), if DEBUG;
+  assert( UNIVERSAL::isa($self, "List::SkipList") ), if DEBUG;
 
   my $key  = shift;
   assert( defined $key ), if DEBUG;
@@ -365,7 +381,7 @@ sub delete {
       my $y = $update_ref->[$i];
       while ($y->forward($i) != $x) {
 	$y = $y->forward($i);
-	assert( ref($y) eq "List::SkipList::Node" ), if DEBUG;
+	assert( UNIVERSAL::isa($y, "List::SkipList::Node") ), if DEBUG;
       }
       $y->forward($i, $x->forward($i));
  
@@ -384,7 +400,7 @@ sub delete {
 sub exists {
 
   my $self = shift;
-  assert( ref($self) eq "List::SkipList" ), if DEBUG;
+  assert( UNIVERSAL::isa($self, "List::SkipList") ), if DEBUG;
 
   my $key  = shift;
 
@@ -396,7 +412,7 @@ sub exists {
 sub find {
 
   my $self = shift;
-  assert( ref($self) eq "List::SkipList" ), if DEBUG;
+  assert( UNIVERSAL::isa($self, "List::SkipList") ), if DEBUG;
 
   my $key  = shift;
 
@@ -409,11 +425,45 @@ sub find {
   }
 }
 
+sub first_key {
+  my $self = shift;
+  assert( UNIVERSAL::isa($self, "List::SkipList") ), if DEBUG;
+
+  my $list = $self->list;
+  if (defined $list->forward(0)) {
+    return $list->forward(0)->key;
+  } else {
+    return;
+  }
+}
+
+sub next_key {
+  my $self = shift;
+  assert( UNIVERSAL::isa($self, "List::SkipList") ), if DEBUG;
+
+  my $last_key = shift;
+  if (defined $last_key) {
+    my ($list, $update_ref) = $self->_search($last_key);
+    if (defined $list->forward(0)) {
+      return $list->forward(0)->key;
+    } else {
+      return;
+    }
+  } else {
+    return;
+  }
+}
+
+1;
+
+__END__
+
+
 
 sub debug {
 
   my $self = shift;
-  assert( ref($self) eq "List::SkipList" ), if DEBUG;
+  assert( UNIVERSAL::isa($self, "List::SkipList") ), if DEBUG;
 
   my $list   = $self->list;
 
@@ -431,12 +481,24 @@ sub debug {
 }
 
 
-1;
-__END__
-
 =head1 NAME
 
 List::SkipList - Perl implementation of skip lists
+
+=head1 REQUIREMENTS
+
+C<Carp::Assert> is used for validation and debugging. (The assertions
+can be commented out if the module cannot be installed.)  Otherwise
+standard modules are used.
+
+=head2 Installation
+
+Installation is pretty standard:
+
+  perl Makefile.PL
+  make
+  make test
+  make install
 
 =head1 SYNOPSIS
 
@@ -451,11 +513,25 @@ List::SkipList - Perl implementation of skip lists
 
 =head1 DESCRIPTION
 
-This is a prototype implementation of skip lists in Perl.  Skip lists are
-similar to linked lists, except that they have random links at various
-levels that allow searches to skip over sections of the list.  They
-generally perform as well as balanced trees for searching but do not
-have the overhead with respect to inserting new items.
+This is a prototype implementation of I<skip lists> in Perl.  Skip
+lists are similar to linked lists, except that they have random links
+at various I<levels> that allow searches to skip over sections of the
+list, like so:
+
+  4 +---------------------------> +----------------------> +
+    |                             |                        |
+  3 +------------> +------------> +-------> +-------> +--> +
+    |              |              |         |         |    |
+  2 +-------> +--> +-------> +--> +--> +--> +-------> +--> +
+    |         |    |         |    |    |    |         |    |
+  1 +--> +--> +--> +--> +--> +--> +--> +--> +--> +--> +--> +
+         A    B    C    D    E    F    G    H    I    J   NIL
+
+A search would start at the top level: if the link exceeds the target
+key, then it descends a level.
+
+Skip lists generally perform as well as balanced trees for searching
+but do not have the overhead with respect to inserting new items.
 
 For more information on skip lists, see the L<SEE ALSO> section below.
 
@@ -473,7 +549,7 @@ Creates a new skip list.  C<max_level> will default to C<32> if it is
 not specified.  It is generally a good idea to leave this value alone
 unless you are using small lists.
 
-The initial list (see the L<list> method) will be a L<random|random_level>
+The initial list (see the L<list> method) will be a L<random|_random_level>
 number of levels, and will increase over time if inserted nodes have higher
 levels.
 
@@ -486,6 +562,14 @@ The value defaults to C<0.5>.
 
 For more information on what these values mean, consult the references
 below in the L<SEE ALSO> section.
+
+If you need to use a different L<node class|Node Methods> for using
+customized L<comparison|key_cmp> routines, you will need to specify a
+different class:
+
+  $list = new SkipList( node_class => 'MyNodeClass' );
+
+See the L<Customizing the Node Class> section below.
 
 =item insert
 
@@ -506,6 +590,18 @@ otherwise.
 
 Searches for the node associated with the key, and returns the value. If
 the key cannot be found, returns C<undef>.
+
+=item first_key
+
+  $key = $list->first_key;
+
+Returns the first key in the list.
+
+=item next_key
+
+  $key = $list->next_key( $last_key );
+
+Returns the key following the previous key.
 
 =item delete
 
@@ -531,9 +627,18 @@ Returns the number of nodes in the list.
 
 =head2 Internal Methods
 
-Internal methods are documented below.  These may change.
+Internal methods are documented below. These are intended for
+developer use only.  These may change in future versions.
 
 =over
+
+=item _search
+
+  ($node, $header_ref) = $list->_search( $key );
+
+Searches for the node with a key.  If the key is found, that node is
+returned along with a L<header>.  If the key is not found, the previous
+node from where the node would be if it existed is returned.
 
 =item p
 
@@ -545,11 +650,11 @@ Returns the I<P> value.  Intended for internal use only.
 
   $max = $list->max_level;
 
-Returns the maximum level that C<random_level> can generate.
+Returns the maximum level that C<_random_level> can generate.
 
-=item random_level
+=item _random_level
 
-  $level = $list->random_level;
+  $level = $list->_random_level;
 
 This is an internal function for generating a random level for new nodes.
 
@@ -564,9 +669,26 @@ The value will never be greater than C<max_level>.
 
   $node = $list->list;
 
-Returns the initial node in the list, which is a L<List::SkipList::Node|Internal Methods>.
+Returns the initial node in the list, which is a
+L<List::SkipList::Node> (See L<below|Node Methods>.)
 
 The key and value for this node are undefined.
+
+=item _node_class
+
+  $node_class_name = $list->_node_class;
+
+Returns the name of the node class used.  By default this is the
+C<List::SkipList::Node>, which is discussed below.
+
+=item _set_node_class
+
+=item _set_max_level
+
+=item _set_p
+
+These methods are used only during initialization of the object.
+I<Do not call these methods after the object has been created!>
 
 =back
 
@@ -594,6 +716,20 @@ Returns the node's key.
 
 When used with an argument, sets the node's key.
 
+=item key_cmp
+
+  if ($node->key_cmp( $key ) != 0) { ... }
+
+Compares the node key with the parameter. Equivalent to using
+
+  if (($node->key cmp $key) != 0)) { ... }
+
+without the need to deal with the node key being C<undef>.
+
+By default the comparison is a string comparison.  If you need a
+different form of comparison, use a
+L<custom node class|Customizing the Node Class>.
+
 =item value
 
   $value = $node->value;
@@ -610,7 +746,13 @@ When used with an argument, sets the node's value.
 
   $header_ref = $node->header;
 
-Returns the forward list (see C<forward>) array of the node.
+Returns the forward list (see C<forward>) array of the node. This is
+an array of nodes which point to the node returned, where each index
+in the array refers to the level.  That is,
+
+  $header[$i] == $list->forward($i)
+
+Where C<$i> is between 0 and C<level>.
 
   $node->header( @header );
 
@@ -635,6 +777,57 @@ Sets the next node associated with the level.
   $levels = $node->level;
 
 Returns the number of levels in the node.
+
+=back
+
+=head2 Customizing the Node Class
+
+The default node may not handle specialized data types.  To define
+your own custom class, you need to derive a child class from
+C<List::SkipList::Node>.
+
+Below is an example of a node which redefines the default type to use
+numeric instead of string comparisons:
+
+  package NumericNode;
+
+  use Carp::Assert; # this is required since the parent uses this
+
+  our @ISA = qw( List::SkipList::Node );
+
+  sub key_cmp {
+    my $self = shift;
+    assert( UNIVERSAL::isa($self, "List::SkipList::Node") ), if DEBUG;
+
+    my $left  = $self->key;  # node key
+    my $right = shift;       # value to compare the node key with
+
+    # We should gracefully handle $left being undefined
+    unless (defined $left) { return -1; }
+
+    return ($left <=> $right);
+  }
+
+To use this, we say simply
+
+  $number_list = new List::SkipList( node_class => 'NumericNode' );
+
+The list should work normally.
+  
+
+=head1 TODO
+
+The following features may be added in future versions:
+
+=over
+
+=item Searching with "Fingers"
+
+=item Merging Lists
+
+=item Splitting Lists
+
+=item Cloning
 
 =back
 

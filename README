@@ -1,6 +1,11 @@
 NAME
     List::SkipList - Perl implementation of skip lists
 
+REQUIREMENTS
+    "Carp::Assert" is used for validation and debugging. (The assertions can
+    be commented out if the module cannot be installed.) Otherwise standard
+    modules are used.
+
 SYNOPSIS
       my $list = new List::SkipList();
 
@@ -12,13 +17,17 @@ SYNOPSIS
       $list->delete('key1');
 
 DESCRIPTION
-    This is a prototype implementation of skip lists in Perl. Skip lists are
-    similar to linked lists, except that they have random links at various
-    levels that allow searches to skip over sections of the list. They
-    generally perform as well as balanced trees for searching but do not
-    have the overhead with respect to inserting new items.
+    This is a prototype implementation of *skip lists* in Perl. Skip lists
+    are similar to linked lists, except that they have random links at
+    various *levels* that allow searches to skip over sections of the list.
 
-    More detailed information is available in the module documentation.
+    Skip lists generally perform as well as balanced trees for searching but
+    do not have the overhead with respect to inserting new items.
+
+    More information is available in the module documentation.
+
+CAVEATS
+    This is a prototype module and may contain bugs.
 
 AUTHOR
     Robert Rothenberg <rrwo@cpan.org>
@@ -32,4 +41,3 @@ SEE ALSO
     See the article *A Skip List Cookbook* (William Pugh, 1989), or similar
     ones by the author at http://www.cs.umd.edu/~pugh/ which discuss skip
     lists.
-

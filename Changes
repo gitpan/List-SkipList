@@ -1,5 +1,8 @@
 Revision history for Perl extension List::SkipList.
 
+0.00  Wed Nov 12 2003
+	- experimental versions, unreleased.
+
 0.01  Fri Nov 14 00:50:00 2003
 	- original version; created by h2xs 1.21 with options
 		-X -n List::SkipList -v 0.01
@@ -7,3 +10,12 @@ Revision history for Perl extension List::SkipList.
 0.02  Fri Nov 14 01:08:00 2003
 	- incorporated experimental code into module
 	- began writing initial test script
+
+0.10  Sat Nov 15 01:11:00 2003
+	- updated test script appropriately
+	- added first_key and next_key methods
+	- added ability to customize List::SkipList::Node
+	- moved debug method to after __END__ block
+	- renamed random_level to _random_level
+	- changed type checking to use isa() method
+	- updated documentation

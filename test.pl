@@ -1,16 +1,31 @@
-# Before `make install' is performed this script should be runnable with
-# `make test'. After `make install' it should work as `perl test.pl'
+package NumericNode;
 
-#########################
+use Carp::Assert;
 
-# change 'tests => 1' to 'tests => last_test_to_print';
+our @ISA = qw( List::SkipList::Node );
+
+sub key_cmp {
+  my $self = shift;
+  assert( UNIVERSAL::isa($self, "List::SkipList::Node") ), if DEBUG;
+
+  my $left  = $self->key;
+  my $right = shift;
+
+  unless (defined $left) { return -1; }
+
+  # Numeric Comparison
+
+  return ($left <=> $right);
+}
+
+
+package main;
 
 use Test;
 BEGIN { plan tests => 173 };
-use List::SkipList 0.02;
+use List::SkipList 0.10;
 ok(1); # If we made it this far, we're ok.
 
-#########################
 
 my $n = new List::SkipList::Node( key => 123, value => 987 );
 ok( ref($n) eq "List::SkipList::Node" );
@@ -125,3 +140,28 @@ foreach my $key (reverse sort keys %TESTDATA1) {
   $c->insert($key, $value );
 
 }
+
+# v0.03 we added ability to define custom nodes
+
+my $n = new NumericNode();
+ok( ref($n) eq "NumericNode" );
+ok( UNIVERSAL::isa($n, "List::SkipList::Node") );
+
+my $d = new List::SkipList( node_class => 'NumericNode' );
+ok( ref($d) eq "List::SkipList");
+
+for (my $i=1; $i<21; $i++) {
+  ok($d->size == ($i-1));
+  $d->insert($i, $i*100);
+  ok($d->size == ($i));
+}
+
+my $last = $d->first_key;
+ok($last == 1);
+
+while (my $next = $d->next_key($last)) {
+  ok( $next > $last );
+  $last = $next;
+}
+
+# $d->debug;
