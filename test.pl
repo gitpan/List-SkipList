@@ -160,8 +160,9 @@ my $last = $d->first_key;
 ok($last == 1);
 
 while (my $next = $d->next_key($last)) {
-  ok( $next > $last );
+  ok( $next == ($last+1) );
   $last = $next;
 }
+
 
 # $d->debug;

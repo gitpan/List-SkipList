@@ -19,3 +19,7 @@ Revision history for Perl extension List::SkipList.
 	- renamed random_level to _random_level
 	- changed type checking to use isa() method
 	- updated documentation
+
+0.11  Sun Nov 16 2003
+	- modified test script to better check next_key function
+	- bug fix: next_key did not check that $last_key existed

@@ -113,31 +113,13 @@ sub value {
   }
 }
 
-# Note: We no longer need the is_nil() method, which has a dubious
-#       purpose anyway.
-
-# sub is_nil {
-#   my $self = shift;
-#   assert( UNIVERSAL::isa($self, "List::SkipList::Node") ), if DEBUG;
-# 
-#   my $level = $self->level;
-#   my $hdr   = $self->header;
-# 
-#   while ($level--) {
-#     if (defined $hdr->[$level]) {
-#       return; }
-#   }
-# 
-#   return -1;
-# }
-
 package List::SkipList;
 
 use 5.006;
 use strict;
 use warnings;
 
-our $VERSION = '0.10';
+our $VERSION = '0.11';
 
 use Carp;
 use Carp::Assert;
@@ -306,7 +288,6 @@ sub _search {
       }
     }
 
-
   } while (($level>=0) && ($x->key_cmp($key) != 0));
 
   assert( UNIVERSAL::isa($x, "List::SkipList::Node") ), if DEBUG;
@@ -444,8 +425,12 @@ sub next_key {
   my $last_key = shift;
   if (defined $last_key) {
     my ($list, $update_ref) = $self->_search($last_key);
-    if (defined $list->forward(0)) {
-      return $list->forward(0)->key;
+    if ($list->key_cmp($last_key) == 0) {
+      if (defined $list->forward(0)) {
+	return $list->forward(0)->key;
+      } else {
+	return;
+      }
     } else {
       return;
     }
