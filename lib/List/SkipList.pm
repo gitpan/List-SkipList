@@ -162,7 +162,7 @@ use 5.006;
 use strict;
 use warnings::register __PACKAGE__;
 
-our $VERSION = '0.71_01';
+our $VERSION = '0.71';
 $VERSION = eval $VERSION;
 
 use AutoLoader qw( AUTOLOAD );
@@ -175,8 +175,14 @@ use Carp qw( carp croak );
 use constant MIN_LEVEL       =>  2;
 use constant MAX_LEVEL       => 32;
 use constant DEF_P           => 0.25;
+use constant DEF_K           => 0;
 
 use constant BASE_NODE_CLASS => 'List::SkipList::Node';
+
+# $NULL is a workaround for situations where a reference might be
+# 'undef' (e.g. $fwd = $node->header->[0] || $NULL), and will probably
+# be phased out of future versions.   We still use 'undef' as an
+# indicator that we're at the end of the list.
 
 our $NULL =  new List::SkipList::Null();
 
@@ -209,15 +215,18 @@ sub new {
     SIZE_LEVEL     => undef,            # maximum level random_level
     MAXLEVEL  => MAX_LEVEL,             # absolute maximum level
     P         => 0,                     # probability for each level
+    K         => 0,                     # minimum power of P
     P_LEVELS  => [ ],                   # array used by random_level
     LIST_END  => undef,                 # node with greatest key
     LASTKEY   => undef,                 # last key used by next_key
     LASTINSRT => undef,                 # cached insertion fingers
+    DUPLICATES => 0,                    # allow duplicates?
   };
 
   bless $self, $class;
 
   $self->_set_p( DEF_P ); # initializes P_LEVELS
+  $self->_set_k( DEF_K );
 
   if (@_) {
     my %args = @_;
@@ -234,6 +243,12 @@ sub new {
   $self->clear;
 
   return $self;
+}
+
+sub _set_duplicates {
+  my ($self, $dup) = @_;
+#   assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
+  $self->{DUPLICATES} = $dup || 0;
 }
 
 sub _set_node_class {
@@ -302,6 +317,25 @@ sub max_level {
   }
 }
 
+# We use the formula from Pugh's "Skip List Cookbook" paper.  We
+# generate a reverse-sorted array of values based on p and k.  In
+# _new_node_level() we look for the highest value in the array that is
+# less than a random number n (0<n<1).
+
+sub _build_distribution {
+  no integer;
+
+  my ($self) = @_;
+
+  my $p = $self->p;
+  my $k = $self->k;
+
+  $self->{P_LEVELS} = [ (0) x MAX_LEVEL ]; 
+  for my $i (0..MAX_LEVEL) {
+    $self->{P_LEVELS}->[$i] = $p**($i+$k);
+  }
+}
+
 sub _set_p {
   no integer;
 
@@ -316,17 +350,8 @@ sub _set_p {
 #   assert( ($p>0) && ($p<1) ), if DEBUG;
 
   $self->{P} = $p;
+  $self->_build_distribution;
 
-  my $n     = 1;
-  my $level = 0;
-
-  $self->{P_LEVELS} = [ ]; 
-
-  while ($level <= MAX_LEVEL) {
-    # TODO: add assertion that [level]<[level-1]
-    $self->{P_LEVELS}->[$level++] = $n;
-    $n *= $p;
-  }
 }
 
 sub p {
@@ -339,6 +364,30 @@ sub p {
     $self->_set_p($p);
   } else {
     $self->{P};
+  }
+}
+
+sub _set_k {
+  my ($self, $k) = @_;
+
+#   assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;  
+
+  unless ( $k>=0 ) {
+    croak "Unvalid value for K (must be at least 0)";
+  }
+
+  $self->{K} = $k;
+  $self->_build_distribution;
+}
+
+sub k {
+  my ($self, $k) = @_;
+#   assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
+
+  if (defined $k) {
+    $self->_set_k($k);
+  } else {
+    $self->{K};
   }
 }
 
@@ -508,7 +557,7 @@ sub insert {
 
   ($node, $finger, $cmp) = $self->_search_with_finger($key, $finger);
 
-  if ($cmp) {
+  if ($cmp || $self->{DUPLICATES}) {
 
     my $new_level = $self->_new_node_level;
 
@@ -570,10 +619,12 @@ sub delete {
       $update_ref->[$i]->header()->[$i] = $node->header()->[$i];
     }
 
-    # There's probably a smarter way to handle this, but this is the
-    # safest way.
+    # There's probably a smarter way to handle the last insert and
+    # last key values, but this is the fastest, easiest, safest and
+    # most consistent way.
 
     $self->{LASTINSRT} = undef;
+    $self->reset;
 
     $self->{SIZE} --;
     $self->_adjust_level_threshold;
@@ -634,23 +685,6 @@ sub find {
   ($cmp == 0) ? $node->value : undef;
 }
 
-sub last_key {
-  my ($self, $key, $finger, $value) = @_;
-#   assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
-
-  if (defined $key) {
-    $self->{LASTKEY} = [ $key, $finger || [ ], $value ];
-  }
-
-  if (defined $self->{LASTKEY}) {
-    return (wantarray) ?
-      @{$self->{LASTKEY}} : $self->{LASTKEY}->[0];
-  } else {
-    return;
-  }
-
-}
-
 sub _first_node { # actually this is the second node
   my $self = shift;
 #   assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
@@ -659,52 +693,82 @@ sub _first_node { # actually this is the second node
   my $node = $list->header()->[0];
 }
 
+
+sub last_key {
+  my ($self, $node, $index) = @_;
+#   assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
+
+  if (@_ > 1) {
+    $self->{LASTKEY} = [ $node, $index ];
+    my $check = $index || 0;
+    if (($check < 0) || ($check >= $self->size)) {
+      carp "index out of bounds", if (warnings::enabled);
+    }
+  }
+  else {
+    unless ($self->{LASTKEY}) {
+      $self->{LASTKEY} = [ $self->_first_node, 0 ];
+    }
+    ($node, $index) = @{ $self->{LASTKEY} };
+  }
+
+  if ($node) {
+    return (wantarray) ?
+      ( $node->key, [ $node ], $node->value, $index ) : $node->key;
+  } else {
+    return;
+  }
+}
+
 sub first_key {
   my $self = shift;
 #   assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
 
   my $node = $self->_first_node;
+
   if ($node) {
-    return $self->last_key( $node->key, undef, $node->value );
-  } else {
+    return $self->last_key( $node, 0);
+  }
+  else {
     carp "no _first_node", if (warnings::enabled);
     return;
   }
-
 }
 
 sub next_key {
-  my $self = shift;
+  my ($self, $last_key, $finger) = @_;
+
 #   assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
-
-  my $last_key = shift;
-  my $finger   = shift;
-
-  unless (defined $last_key) {
-    ($last_key, $finger) = $self->last_key;
-  }
-
 #   if ($finger) {
 #     assert( ref($finger) eq 'ARRAY' ), if DEBUG;
 #   }
 
-  if (defined $last_key) {
-    my ($list, $update_ref, $cmp) =
-      $self->_search_with_finger($last_key, $finger);
+  my ($node, $cmp, $value, $index);
 
-    if ($cmp == 0) {
-      my $node  = $list->header()->[0];
-      if ($node) {
-	$self->last_key($node->key, $update_ref, $node->value);
-      } else {
-	return;
-      }
-    } else {
+  if (defined $last_key) {
+    ($node, $finger, $cmp) = $self->_search_with_finger($last_key, $finger);
+
+    if ($cmp) {
       carp "cannot find last_key", if (warnings::enabled);
       return;
     }
-  } else {
-    $self->first_key;
+  }
+  else {
+    ($node, $index) = @{ $self->{LASTKEY} || [ ] };
+    unless ($node) {
+      return $self->first_key;
+    }
+  }
+
+  if ($node) {
+    $node = $node->header()->[0];
+    return $self->last_key(
+      $node,
+      (($node && (defined $index)) ? ($index+1) : undef )
+    );
+  }
+  else {
+    return $self->reset;
   }
 }
 
@@ -728,6 +792,32 @@ BEGIN
 1;
 
 __END__
+
+sub find_duplicates {
+  my ($self, $key, $finger) = @_;
+#   assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
+
+#   if (defined $finger) {
+#     assert( UNIVERSAL::isa($finger, 'ARRAY') ), if DEBUG;
+#   }
+
+  my ($node, $update_ref, $cmp) = $self->_search_with_finger($key, $finger);
+
+  if ($cmp == 0) {
+    my @values = ( $node->value );
+
+    while ( ($node->header()->[0]) &&
+	    ($node->header()->[0]->key_cmp($key) == 0) ) {
+      $node = $node->header()->[0];
+      push @values, $node->value;
+    }
+
+    return @values;
+  }
+  else {
+    return;
+  }
+}
 
 sub level {
   my $self = shift;
@@ -764,8 +854,6 @@ sub least {
     return;
   }
 }
-
-
 
 sub greatest {
   my $self = shift;
@@ -812,11 +900,11 @@ sub keys {
 
   my @keys = ();
 
-  my ($key, $finger) = $self->first_key;
+  my $key = $self->first_key;
 
   while (defined $key) {
     push @keys, $key;
-    $key = $self->next_key($key, $finger);
+    $key = $self->next_key;
   }
 
   return @keys;
@@ -826,13 +914,14 @@ sub values {
   my $self = shift;
 #   assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
 
+  my $key = $self->first_key;
+
   my @values = ();
 
-  my ($key, $finger) = $self->first_key;
-
   while (defined $key) {
-    push @values, scalar $self->find($key, $finger);
-    ($key, $finger) = $self->next_key($key, $finger);
+    my $value = ($self->last_key)[2];
+    push @values, $value;
+    $key = $self->next_key;
   }
 
   return @values;
@@ -853,14 +942,14 @@ sub truncate {
       # of "skips" in the forward pointers when we add nodes, but that
       # will significantly affect the speed.
 
-      my $size = 0;
-      {
-	my $aux  = $self->list;
-	while ($aux != $node) {
-	  $size++;
-	  $aux = $aux->header()->[0];
-	}
-      }
+      my $size = 1 + $self->index_by_key( $key );
+#       {
+# 	my $aux  = $self->list;
+# 	while ($aux != $node) {
+# 	  $size++;
+# 	  $aux = $aux->header()->[0];
+# 	}
+#       }
 
       my $list = new List::SkipList(
         max_level  => $self->max_level,
@@ -937,6 +1026,7 @@ sub copy {
     p          => $self->p,
     node_class => $self->_node_class,
   );
+  $list->{DUPLICATES} = $self->{DUPLICATES};
 
   my ($node, $cmp);
   my $finger_cp = undef;
@@ -976,13 +1066,13 @@ sub merge {
 #   assert( ref($node1) eq ref($node2) ), if DEBUG;
 #   assert( ref($finger1) eq 'ARRAY' ), if DEBUG;
 
-  while ((defined $node1) || (defined $node2)) {
+  while ($node1 || $node2) {
 
-    my $cmp = (defined $node1) ? (
-     (defined $node2) ? $node1->key_cmp( $node2->key ) : 1 ) : -1;
+    my $cmp = ($node1) ? (
+      ($node2) ? $node1->key_cmp( $node2->key ) : 1 ) : -1;
     
     if ($cmp < 0) {                     # key1 < key2
-      if (defined $node1) {
+      if ($node1) {
 	$finger1 = $list1->insert( $node1->key, $node1->value, );
 	$node1 = $node1->header()->[0];
       } else {
@@ -990,7 +1080,7 @@ sub merge {
 	$node2 = $node2->header()->[0];
       }
     } elsif ($cmp > 0) {                # key1 > key2
-      if (defined $node2) {
+      if ($node2) {
 	$finger1 = $list1->insert( $node2->key, $node2->value, );
 	$node2 = $node2->header()->[0];
       } else {
@@ -999,9 +1089,9 @@ sub merge {
       }
     } else {                            # key1 = key2
       $node1 = $node1->header()->[0],
-	if defined $node1;
+	if $node1;
       $node2 = $node2->header()->[0],
-	if defined $node2;
+	if $node2;
     }
   }
 }
@@ -1057,6 +1147,94 @@ sub append {
   }
   $list1->_adjust_level_threshold;
 }
+
+sub _node_by_index {
+  my ($self, $index) = @_;
+#   assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
+
+  # Bug: for some reason, change $[ does not affect this module.
+
+#   if ($index >= $[) {
+#     $index -= $[;
+#   }
+
+  if ($index < 0) {
+    $index += $self->size;
+  }
+
+  if (($index < 0) || ($index >= $self->size)) {
+    carp "index out of range", if (warnings::enabled);
+    return;
+  }
+
+
+  my ($node, $last_index) = @{ $self->{LASTKEY} || [ ] };
+
+  if ((defined $last_index)  && ($last_index <= $index)) {
+    ($last_index, $index) = ($index, $index - $last_index);
+  }
+  else {
+    $last_index = $index;
+    $node = undef;
+  }
+
+  $node ||= $self->_first_node;
+
+  unless ($node) {
+    return;
+  }
+
+  while ($node && $index--) {
+    $node = $node->header()->[0];
+  }
+
+  $self->last_key( $node, $last_index );
+  return $node;
+}
+
+sub key_by_index {
+  my ($self, $index) = @_;
+#   assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
+
+  my $node = $self->_node_by_index($index);
+  if ($node) {
+    return $node->key;
+  } else {
+    return;
+  }
+}
+
+sub value_by_index {
+  my ($self, $index) = @_;
+#   assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
+
+  my $node = $self->_node_by_index($index);
+  if ($node) {
+    return $node->value;
+  } else {
+    return;
+  }
+}
+
+sub index_by_key {
+  my ($self, $key) = @_;
+#   assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
+
+  my $node  = $self->_first_node;
+  my $index = 0;
+  while ($node && ($node->key_cmp($key) < 0)) {
+    $node = $node->header()->[0];
+    $index++;
+  }
+
+  if ($node->key_cmp($key) == 0) {
+    $self->last_key( $node, $index );
+    return $index;
+  } else {
+    return;
+  }
+}
+
 
 sub _debug {
 
@@ -1143,7 +1321,7 @@ A detailed description of the methods used is below.
 
 =item new
 
-  $list = new SkipList();
+  $list = new List::SkipList();
 
 Creates a new skip list.
 
@@ -1151,13 +1329,13 @@ If you need to use a different L<node class|/"Node Methods"> for using
 customized L<comparison|/"key_cmp"> routines, you will need to specify a
 different class:
 
-  $list = new SkipList( node_class => 'MyNodeClass' );
+  $list = new List::SkipList( node_class => 'MyNodeClass' );
 
 See the L</"Customizing the Node Class"> section below.
 
 Specialized internal parameters may be configured:
 
-  $list = new SkipList( max_level => 32 );
+  $list = new List::SkipList( max_level => 32 );
 
 Defines a different maximum list level.
 
@@ -1167,11 +1345,18 @@ time if inserted nodes have higher levels, up until L</max_level>
 levels.  See L</max_level> for more information on this parameter.
 
 You can also control the probability used to determine level sizes for
-each node by setting the L<P|/"p"> value:
+each node by setting the L<P|/"p"> and k values:
 
-  $list = new SkipList( p => 0.25 );
+  $list = new List::SkipList( p => 0.25, k => 1 );
 
 See  L<P|/p> for more information on this parameter.
+
+You can enable duplicate keys by using the following:
+
+  $list = new List::SkipList( duplicates => 1 );
+
+This is an experimental feature. See the L</KNOWN ISSUES> section
+below.
 
 =item insert
 
@@ -1226,6 +1411,19 @@ the key cannot be found, returns C<undef>.
 This method is slightly faster than L</find_with_finger> since it does
 not return a search finger when called in list context.
 
+If you are searching for duplicate keys, you must use
+L</find_with_finger> or L</find_duplicates>.
+
+=item find_duplicates
+
+  @values = $list->find_duplicates( $key );
+
+  @values = $list->find_duplicates( $key, $finger );
+
+Returns an array of values from the list.
+
+This is an autoloading method.
+
 =item search
 
 Search is an alias to L</find>.
@@ -1267,6 +1465,8 @@ then the value of L</last_key> is assumed:
 
   $key = $list->next_key( $list->last_key );
 
+Note: calls to L</delete> will L</reset> the last key.
+
 =item next
 
   ($key, $value) = $list->next( $last_key, $finger );
@@ -1284,24 +1484,53 @@ This is an autoloading method.
   ($key, $finger, $value) = $list->last_key;
 
 Returns the last key or the last key and finger returned by a call to
-L</first_key> or L</next_key>.  This is not the greatest key.
+L</first_key>, L</next_key>, L</index_by_key>, L</key_by_index> or
+L</value_by_index>.  This is not the greatest key.
 
-Deletions and inserts may invalidate the L</last_key> value, although
-they may not L</reset> the last key.
+Deletions and inserts may invalidate the L</last_key> value.
+(Deletions will actually L</reset> the value.)
 
 Values for L</last_key> can also be set by including parameters,
 however this feature is meant for I<internal use only>:
 
-  $list->last_key( $key, $finger, $value );
+  $list->last_key( $node );
 
-No checking is done to make sure that the C<$key> and C<$value> pairs
-match, or that the C<$finger> is valid.
+Note that this is a change form versions prior to 0.71.
 
 =item reset
 
   $list->reset;
 
 Resets the L</last_key> to C<undef>. 
+
+=item index_by_key
+
+  $index = $list->index_by_key( $key );
+
+Returns the 0-based index of the key (as if the list were an array).
+I<This is not an efficient method of access.>
+
+This is an autoloading method.
+
+=item key_by_index
+
+  $key = $list->key_by_index( $index );
+
+Returns the key associated with an index (as if the list were an
+array).  Negative indices return the key from the end.  I<This is not
+an efficient method of access.>
+
+This is an autoloading method.
+
+=item value_by_index
+
+  $value = $list->value_by_index( $index );
+
+Returns the value associated with an index (as if the list were an
+array).  Negative indices return the value from the end.  I<This is not
+an efficient method of access.>
+
+This is an autoloading method.
 
 =item delete
 
@@ -1363,8 +1592,8 @@ This is an autoloading method.
 
   $list1->append( $list2 );
 
-Appends C<$list2> after C<$list1>.  The last key of C<$list1> must be less
-than the first key of C<$list2>.
+Appends (concatenates) C<$list2> after C<$list1>.  The last key of
+C<$list1> must be less than the first key of C<$list2>.
 
 Both lists should have the same L<node class|/"_node_class">.
 
@@ -1469,6 +1698,19 @@ Same as L</_search_with_finger>, only that a search finger is not returned.
 This is useful for searches where a finger is not needed.  The speed
 of searching is improved.
 
+=item k
+
+  $k = $list->k;
+
+Returns the I<k> value.
+
+  $list->k( $k );
+
+Sets the I<k> value.
+
+Higher values will on the average have less pointers per node, but
+take longer for searches.  See the section on the L<P|/p> value.
+
 =item p
 
   $plevel = $list->p;
@@ -1480,9 +1722,8 @@ Returns the I<P> value.
 Changes the value of I<P>.  Lower values will on the average have less
 pointers per node, but will take longer for searches.
 
-The value defaults to C<0.25>, which appears to be optimial.  Smaller
-values may reduce the average number of pointers per node but also
-reduce the efficiency of the algorithm.
+The probability that a particular node will have a forward pointer at
+level I<i> is: I<p**(i+k-1)>.
 
 For more information, consult the references below in the
 L</"SEE ALSO"> section.
@@ -1556,14 +1797,22 @@ L</greatest> methods.
 Returns the name of the node class used.  By default this is the
 C<List::SkipList::Node>, which is discussed below.
 
+=item _build_distribution
+
+  $list->_build_distribution;
+
+Rebuilds the probability distribution array C<{P_LEVELS}> upon calls
+to L</_set_p> and L</_set_k>.
+
 =item _set_node_class
 
 =item _set_max_level
 
 =item _set_p
 
-These methods are used only during initialization of the object.
-I<Do not call these methods after the object has been created!>
+=item _set_k
+
+These methods are used during initialization of the object.
 
 =item _debug
 
@@ -1776,26 +2025,6 @@ flexibility in defining a custom node class.
 
 See the included F<Benchmark.txt> file for performance comparisons.
 
-=head1 TODO
-
-The following features may be added in future versions:
-
-=over
-
-=item Accessing list nodes by index number as well as key
-
-The ability to tie a list to an array as well as a hash, probably as a
-subclass since to implement it efficiently would require some extra
-bookkeeping.
-
-=item Deterministic Skip Lists
-
-An additional module (probably a subclass of List::SkipList) to
-implement deterministic skip lists (DSLs), probably as a 1-2-3 skip
-list.
-
-=back
-
 =head1 KNOWN ISSUES
 
 =over
@@ -1809,6 +2038,21 @@ claim that the key cannot be found.
 
 In such circumstances, use the L</exists> method to test for the
 existence of a key.
+
+=item Duplicate Keys
+
+Duplicate keys are an experimental feature in this module, since most
+methods have been designed for unique keys only.
+
+Access to duplicate keys is akin to a stack.  When a duplicate key is
+added, it is always inserted I<before> matching keys.  In searches, to
+find duplicate keys one must use L</find_with_finger> or the
+L</find_duplicates> method.
+
+The L</copy> method will reverse the order of duplicates.
+
+The behavior of the L</merge> and L</append> methods is not defined
+for duplicates.
 
 =item Non-Determinism
 

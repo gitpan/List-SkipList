@@ -1,6 +1,21 @@
 Revision history for Perl extension List::SkipList. (Changes which may
 not be backwards compatible are marked with an asterisk '*'.)
 
+0.71	Sat Jun 12 2004
+	- updated POD
+	- redesigned internals of first_key, next_key and last_key
+	* delete now resets last_key
+	* the parameters for last_key are changed (this interface was
+          meant for internal use only, however)
+	- added index_by_key, key_by_index and value_by_index methods
+	- updated documentation on p and k parameters
+	- added support for k parameter
+	- redid probability distribution calculations
+	- fixed bug in benchmarks (was "existing" bogus keys)
+	- added support for duplicate values
+	- added find_duplicates method
+	- corrected typos in POD for new method
+
 0.71_01 Wed Jun  9 2004
 	- fixed bug in benchmarks (was deleting bogus keys)
 	- added some warnings

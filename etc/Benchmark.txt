@@ -6,17 +6,17 @@ PERFORMANCE
                              Ordered  Reversed Random           Failed
       Module        Version  Inserts  Inserts  Inserts  Finds   Finds
 
-      List::SkipList  0.64     3.39     2.12     3.81    3.13     2.95
-      Tree::BPTree    1.06    10.21     8.73     7.71    2.65     4.56(1)
-      Tree::RedBlack  0.3      6.14     6.00     3.85    2.77     2.93
-      Tree::Smart     0.01     3.51     3.54    17.20   14.22(3) 13.47
+      List::SkipList  0.71     3.13     2.14     3.72    2.95     3.07
+      Tree::BPTree    1.06    10.16     8.82     7.70    2.59     3.16(1)
+      Tree::RedBlack  0.3      6.14     6.00     3.85    2.82     3.13
+      Tree::Smart     0.01     3.67     3.71    17.76   14.62(3) 13.47
 
                               Exists   Deletes   
 
-      List::SkipList           2.93      3.24
-      Tree::BPTree             N/A       2.67
-      Tree::RedBlack           N/A       2.98(2)
-      Tree::Smart              3.56      3.64
+      List::SkipList           2.93      3.44
+      Tree::BPTree             N/A       7.15
+      Tree::RedBlack           N/A       N/A  (2)
+      Tree::Smart              3.56      0.09
 
     (1) Numerous "Use of uninitialized value in string comparison"
         warnings were generated.
@@ -28,9 +28,9 @@ PERFORMANCE
         was of a single search query for each element, and so is not an
         accurate guage of performance.
 
-    Numbers in mean seconds per 100+ x 10,000 operations on a set of
-    randomly generated keys on a machine running Windows XP Pro,
-    Pentium III 795 MHz, 320 MB RAM, using ActiveState Perl 5.8.3.809.
+    Numbers in mean seconds per 10,000 operations on a set of randomly
+    generated keys on a machine running Windows XP Pro, Pentium III
+    795 MHz, 320 MB RAM, using ActiveState Perl 5.8.3.809.
 
     Each module was tested in a separate script to minimize the
     effects of memory issues.

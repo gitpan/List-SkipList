@@ -81,6 +81,21 @@ DESCRIPTION
 REVISION HISTORY
     Changes since v0.65:
 
+    0.71 Sat Jun 12 2004
+	- updated POD
+	- redesigned internals of first_key, next_key and last_key
+	* delete now resets last_key
+	* the parameters for last_key are changed (this interface was
+          meant for internal use only, however)
+	- added index_by_key, key_by_index and value_by_index methods
+	- updated documentation on p and k parameters
+	- added support for k parameter
+	- redid probability distribution calculations
+	- fixed bug in benchmarks (was "existing" bogus keys)
+	- added support for duplicate values
+	- added find_duplicates method
+	- corrected typos in POD for new method
+
     0.71_01 Wed Jun  9 2004
 	- fixed bug in benchmarks (was deleting bogus keys)
 	- added some warnings
@@ -113,7 +128,7 @@ REVISION HISTORY
 	- fixed bug where level sometimes exceeded user-set max level
 	- P and max_level can now be set dynamically
 	- added tests for max_level and p
-	- checks for error when setting P
+	- checks for error when setting max_level or P
 	- fixed bug with definition of List::SkipList::Null
 	- $NULL is now an 'our' variable and accessible from outside
 	- level method was changed to autoload, since it was redundant

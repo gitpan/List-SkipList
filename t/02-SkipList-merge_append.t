@@ -30,7 +30,7 @@ sub key_cmp {
 
 package main;
 
-use Test::More tests => 254;
+use Test::More tests => 265;
 use List::SkipList 0.70;
 
 # We build two lists and merge them
@@ -165,7 +165,9 @@ foreach my $i (-2..10) {
   ok(scalar $g->first_key == shift @keys);
   while (@keys) { ok($g->next_key == shift @keys); }
 
+
   my @vals = $g->values;
+  ok(scalar @vals == $g->size);
 
   foreach my $i (1..10) {
     ok($g->find($i) == $vals[$i-1]); }
@@ -228,6 +230,7 @@ foreach my $i (-2..10) {
 
     ok( $hn->key_cmp($i) == 0 );
     ok( $hn->key_cmp($gn->key) == 1 ), if ($gn->key);
+    ok( $gn->key_cmp($hn->key) == -1 ), if ($hn->key);
   }
   
 }

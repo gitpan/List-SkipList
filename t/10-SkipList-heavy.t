@@ -180,8 +180,9 @@ foreach my $key (sort keys %Hash) {
   ok($key eq $Copy->first_key);
   ok(defined $Copy->delete($key));
   {
+    # In v0.71_02, we changed the behavior so that deletes reset last key
     no warnings;
-    ok(!defined $Copy->next_key);
+    ok($Copy->next_key ne $key);
   };
 }
 

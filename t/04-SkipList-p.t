@@ -2,6 +2,8 @@
 
 package main;
 
+use strict;
+
 use Test::More tests => 19;
 
 use List::SkipList 0.70;

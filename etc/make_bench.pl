@@ -98,7 +98,7 @@ timethis( 1,
 
 if ($Obj->can("exists")) { timethis( 1,
  sub {
-   foreach my $key (@BogusKeys) {
+   foreach my $key (@RandomKeys) {
      $Obj->exists($key);
    }
  }, "<<module>>::exists" );
