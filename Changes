@@ -1,5 +1,11 @@
 Revision history for Perl extension List::SkipList.
 
+0.32  Mon Mar 15 2004
+	- renamed test.pl to t/01-SkipList.t
+	- added Build.PL to distribution
+        - updated README
+	- corrected and updated POD
+
 0.31  Fri Feb 13 2004
 	- removed memoized node example from POD
 	- reformatted E-mail addresses in various files to foil

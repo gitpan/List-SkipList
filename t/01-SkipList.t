@@ -28,6 +28,9 @@ sub key_cmp {
 
 package MemoizedNode;
 
+# This is here really to test an example that was in the v0.30
+# POD. Example was removed but the test is left here anyway.
+
 use Carp::Assert;
 
 our @ISA = qw( List::SkipList::Node );
@@ -58,7 +61,7 @@ package main;
 
 use Test;
 BEGIN { plan tests => 452 };
-use List::SkipList 0.30;
+use List::SkipList 0.32;
 ok(1); # If we made it this far, we're ok.
 
 my $n = new List::SkipList::Node( key => 123, value => 987 );

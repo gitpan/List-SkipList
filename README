@@ -2,9 +2,31 @@ NAME
     List::SkipList - Perl implementation of skip lists
 
 REQUIREMENTS
+    Perl 5.6.1 is required.
+
     "Carp::Assert" is used for validation and debugging. (The assertions can
     be commented out if the module cannot be installed.) Otherwise standard
     modules are used.
+
+Installation
+    Installation can be done using the traditional Makefile.PL or the
+    newer Build.PL methods.
+
+    Using Makefile.PL:
+
+      perl Makefile.PL
+      make
+      make test
+      make install
+
+    (On Windows platforms you should use nmake instead.)
+
+    Using Build.PL (if you have Module::Build installed):
+
+      perl Build.PL
+      perl Build
+      perl Build test
+      perl Build install    
 
 SYNOPSIS
       my $list = new List::SkipList();
@@ -17,9 +39,30 @@ SYNOPSIS
       $list->delete('key1');
 
 DESCRIPTION
-    This is a prototype implementation of *skip lists* in Perl. Skip lists
-    are similar to linked lists, except that they have random links at
-    various *levels* that allow searches to skip over sections of the list.
+    This is an implementation of skip lists in Perl.  What are "skip
+    lists"?  From WikiPedia <http://en.wikipedia.org/wiki/Skip_list>:
+
+      Skip lists are a probabilistic data structure that seem likely
+      to supplant balanced trees as the implementation method of
+      choice for many applications. Skip list algorithms have the same
+      asymptotic expected time bounds as balanced trees and are
+      simpler, faster and use less space.
+
+    Skip lists are similar to linked lists, except that they have
+    random links at various levels that allow searches to skip over
+    sections of the list, like so:
+
+      4 +---------------------------> +----------------------> +
+        |                             |                        |
+      3 +------------> +------------> +-------> +-------> +--> +
+        |              |              |         |         |    |
+      2 +-------> +--> +-------> +--> +--> +--> +-------> +--> +
+        |         |    |         |    |    |    |         |    |
+      1 +--> +--> +--> +--> +--> +--> +--> +--> +--> +--> +--> +
+             A    B    C    D    E    F    G    H    I    J   NIL
+
+    A search would start at the top level: if the link to the right
+    exceeds the target key, then it descends a level.
 
     Skip lists generally perform as well as balanced trees for searching but
     do not have the overhead with respect to inserting new items.
@@ -27,27 +70,24 @@ DESCRIPTION
     More information is available in the module documentation.
 
 REVISION HISTORY
-    Changes since v0.30:
+    Changes since v0.31:
 
-    0.31  Fri Feb 13 2004
-	- removed memoized node example from POD
-	- reformatted E-mail addresses in various files to foil
-	  spam harvesters
-	- changes calls to keys to CORE::keys [Bug 5317]
-	- added version to List::SkipList::Node
-	- corrected errors in POD formatting
+    0.32  Mon Mar 15 2004
+	- renamed test.pl to t/01-SkipList.t
+	- added Build.PL to distribution
+        - updated README
 	- corrected and updated POD
-	- added META.yml file to distribution
+
+    A detailed revision history is in the Changes file included with
+    this distribution.
 
 CAVEATS
-    This is a prototype module and may contain bugs.
-
     Skip lists are non-deterministic.  Because of this, bugs in programs
     that use this module may be subtle and difficult to reproduce without
     many repeated attempts.
 
 AUTHOR
-    Robert Rothenberg <rrwo[at]cpan.org>
+    Robert Rothenberg <rrwo at cpan.org>
 
 LICENSE
     Copyright (c) 2003-2004 Robert Rothenberg. All rights reserved. This
@@ -55,6 +95,6 @@ LICENSE
     under the same terms as Perl itself.
 
 SEE ALSO
-    See the article *A Skip List Cookbook* (William Pugh, 1989), or similar
-    ones by the author at http://www.cs.umd.edu/~pugh/ which discuss skip
-    lists.
+    See the article "A Skip List Cookbook" (William Pugh, 1989), or
+    similar ones by the author at http://www.cs.umd.edu/~pugh/ which
+    discuss skip lists.

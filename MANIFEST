@@ -1,7 +1,9 @@
+Build.PL
 Changes
 Makefile.PL
 MANIFEST
 META.yml
 README
-SkipList.pm
-test.pl
+lib/List/SkipList.pm
+t/01-SkipList.t
+

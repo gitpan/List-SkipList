@@ -1,5 +1,6 @@
 package List::SkipList::Node;
 
+use 5.006;
 use strict;
 use warnings;
 
@@ -143,7 +144,7 @@ use 5.006;
 use strict;
 use warnings;
 
-our $VERSION = '0.31';
+our $VERSION = '0.32';
 
 use AutoLoader 'AUTOLOAD';
 use Carp;
@@ -771,15 +772,6 @@ C<Carp::Assert> is used for validation and debugging. (The assertions
 can be commented out if the module cannot be installed.)  Otherwise
 standard modules are used.
 
-=head2 Installation
-
-Installation is pretty standard:
-
-  perl Makefile.PL
-  make
-  make test
-  make install
-
 =head1 SYNOPSIS
 
   my $list = new List::SkipList();
@@ -793,10 +785,11 @@ Installation is pretty standard:
 
 =head1 DESCRIPTION
 
-This is a prototype implementation of I<skip lists> in Perl.  Skip
-lists are similar to linked lists, except that they have random links
-at various I<levels> that allow searches to skip over sections of the
-list, like so:
+This is an implementation of I<skip lists> in Perl.
+
+Skip lists are similar to linked lists, except that they have random
+links at various I<levels> that allow searches to skip over sections
+of the list, like so:
 
   4 +---------------------------> +----------------------> +
     |                             |                        |
@@ -815,8 +808,8 @@ but do not have the overhead with respect to inserting new items.
 
 For more information on skip lists, see the L</"SEE ALSO"> section below.
 
-Note: Only alphanumeric keys are supported.  To use numeric or other
-types of keys, see L</"Customizing the Node Class"> below.
+Only alphanumeric keys are supported.  To use numeric or other types
+of keys, see L</"Customizing the Node Class"> below.
 
 =head2 Methods
 
@@ -826,25 +819,9 @@ A detailed description of the methods used is below.
 
 =item new
 
-  $list = new SkipList( max_level => 32 );
+  $list = new SkipList();
 
-Creates a new skip list.  C<max_level> will default to C<32> if it is
-not specified.  It is generally a good idea to leave this value alone
-unless you are using small lists.
-
-The initial list (see the L</"list"> method) will be a
-L<random|/"_random_level"> number of levels, and will increase over time
-if inserted nodes have higher levels.
-
-You can also control the probability used to determine level sizes by
-setting the L<P|/"p"> value:
-
-  $list = new SkipList( p => 0.5 );
-
-The value defaults to C<0.5>.
-
-For more information on what these values mean, consult the references
-below in the L</"SEE ALSO"> section.
+Creates a new skip list.
 
 If you need to use a different L<node class|/"Node Methods"> for using
 customized L<comparison|/"key_cmp"> routines, you will need to specify a
@@ -853,6 +830,28 @@ different class:
   $list = new SkipList( node_class => 'MyNodeClass' );
 
 See the L</"Customizing the Node Class"> section below.
+
+Specialized internal parameters may be configured:
+
+  $list = new SkipList( max_level => 32 );
+
+Defines a different maximum list level, or C<max_level>.  (The default
+is 32.) It is generally a good idea to leave this value alone unless
+you are using small lists.
+
+The initial list (see the L</"list"> method) will be a
+L<random|/"_random_level"> number of levels, and will increase over time
+if inserted nodes have higher levels.
+
+You can also control the probability used to determine level sizes for
+each node by setting the L<P|/"p"> value:
+
+  $list = new SkipList( p => 0.5 );
+
+The value defaults to C<0.5>.
+
+For more information on what these values mean, consult the references
+below in the L</"SEE ALSO"> section.
 
 =item insert
 
@@ -1370,13 +1369,23 @@ The following features may be added in future versions:
 
 =item Accessing list nodes by index number as well as key
 
+The ability to tie a list to an array as well as a hash, probably as a
+subclass since to implement it efficiently would require some extra
+bookkeeping.
+
 =item Splitting lists
+
+The ability to split a list into multiple segments.
+
+=item Deterministic Skip Lists
+
+An additional module (probably a subclass of List::SkipList) to
+implement deterministic skip lists (DSLs), probably as a 1-2-3 skip
+list.
 
 =back
 
 =head1 CAVEATS
-
-This is a prototype module and may contain bugs.  However...
 
 Skip lists are non-deterministic.  Because of this, bugs in programs
 that use this module may be subtle and difficult to reproduce without
@@ -1385,11 +1394,11 @@ a L<custom node|/"Customizing the Node Class">.
 
 =head1 AUTHOR
 
-Robert Rothenberg <rrwo[at]cpan.org>
+Robert Rothenberg <rrwo at cpan.org>
 
 =head2 Acknowledgements
 
-Carl Shapiro <cshapiro[at]panix.com> for introduction to skip lists.
+Carl Shapiro <cshapiro at panix.com> for introduction to skip lists.
 
 =head2 Suggestions and Bug Reporting
 
@@ -1404,11 +1413,11 @@ under the same terms as Perl itself.
 
 =head1 SEE ALSO
 
-See the article I<A Skip List Cookbook> (William Pugh, 1989), or
+See the article "A Skip List Cookbook" (William Pugh, 1989), or
 similar ones by the author at L<http://www.cs.umd.edu/~pugh/> which
 discuss skip lists.
 
-If you need a keyed list that preserves the order or insertion rather
+If you need a keyed list that preserves the order of insertion rather
 than sorting keys, see L<List::Indexed>.
 
 =cut
