@@ -12,8 +12,8 @@ use warnings;
 use constant SIZE => 100;
 
 use Test;
-BEGIN { plan tests => 1+(8*SIZE) };
-use List::SkipList 0.51;
+BEGIN { plan tests => 2+(14*SIZE) };
+use List::SkipList 0.52;
 ok(1);
 
 my @Keys = ();
@@ -45,13 +45,24 @@ foreach (1..SIZE) {
 
   ok( $List->exists( $k ) );
   ok( $List->find( $k ), $v );
+  ok( $List->find_with_finger( $k ), $v );
 
   ok( $List->exists( $k, $finger ) );
   ok( $List->find( $k, $finger ), $v );
+  ok( $List->find_with_finger( $k, $finger ), $v );
+
+  my @results = $List->find_with_finger( $k, $finger );
+  ok( @results == 2 );
+  ok( $results[0], $v );
+  ok( ref( $results[1] ) eq "ARRAY" );
 }
+
+my $Copy = $List->copy();
+ok( $List->size, $Copy->size );
 
 foreach my $key (sort keys %Hash) {
   ok($key eq $List->next_key);
+  ok($key eq $Copy->next_key);
 }
 
 foreach my $key (keys %Hash) {

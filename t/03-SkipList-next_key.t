@@ -1,9 +1,9 @@
 package main;
 
-use constant SIZE => 100;
+use constant SIZE => 5;
 
 use Test;
-BEGIN { plan tests => 6+(2*SIZE) };
+BEGIN { plan tests => 6+(4*SIZE) };
 use List::SkipList 0.51;
 ok(1);
 
@@ -11,12 +11,14 @@ my $List = new List::SkipList;
 
 ok(!defined $List->first_key); # make sure this returns nothing
 
-my @data = sort (1..SIZE);
+my @data = sort (0..(SIZE-1)); # test '0' as key for last_key
+
+my %hash = map { $_ => sprintf('%04d', $_); } @data;
 
 ok(SIZE == @data);
 
 foreach (@data) {
-  $List->insert($_);
+  $List->insert($_, $hash{$_});
 }
 ok($List->size == @data);
 
@@ -27,7 +29,6 @@ foreach (@data) {
 }
 
 # check that first_key/next_key still work
-
 {
   my $i = 0;
 
@@ -44,4 +45,31 @@ foreach (@data) {
   ok($data[0] eq $List->first_key);
   $List->reset;
   ok($data[0] eq $List->next_key);
+}
+
+$List->reset;
+
+{
+  my $i = 0;
+
+  while (my ($key, $value) = $List->next) {
+    ok($data[$i++] eq $key);
+    ok($hash{$key} eq $value);
+  }
+}
+
+__END__
+
+$List->reset;
+
+my @prev = reverse @data;
+
+{
+  my $i = 0;
+
+  while (my ($key, $value) = $List->prev) {
+    print STDERR "\t$key\t$value\n";
+#    ok($prev[$i++] eq $key);
+#    ok($hash{$key} eq $value);
+  }
 }

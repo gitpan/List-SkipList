@@ -2,7 +2,7 @@ use strict;
 use warnings;
 
 use Benchmark;
-use List::SkipList 0.42;
+use List::SkipList 0.60;
 use Tree::Smart;
 use Tree::Ternary;
 use Tree::RedBlack;
@@ -10,6 +10,7 @@ use Tree::RedBlack;
 use constant SIZE => 10000;
 
 my @RandomKeys  = ();
+my @BogusKeys   = ();
 my $Cnt   = SIZE;
 
 {
@@ -21,6 +22,12 @@ my $Cnt   = SIZE;
       $key .= substr($stuff, int(rand(length($stuff))),1);
     }
     push @RandomKeys, $key;
+
+    $key = "";
+    for (1..32) {
+      $key .= substr($stuff, int(rand(length($stuff))),1);
+    }
+    push @BogusKeys, $key;
   }
 }
 
@@ -69,6 +76,20 @@ timethese( COUNT, {
   'Tree::Ternary::ins RandomKeys' => make_sub($Tt, 'insert', \@RandomKeys),
 });
 
+timethese( COUNT, {
+  'List::SkipList::find' => make_sub($Sl, 'find', \@RandomKeys),
+  'Tree::RedBlack::find' => make_sub($Trb, 'find', \@RandomKeys),
+  'Tree::Smart::find' => make_sub($Ts, 'find', \@RandomKeys),
+  'Tree::Ternary::search' => make_sub($Tt, 'search', \@RandomKeys),
+});
+
+timethese( COUNT, {
+  'List::SkipList::!find' => make_sub($Sl, 'find', \@BogusKeys),
+  'Tree::RedBlack::!find' => make_sub($Trb, 'find', \@BogusKeys),
+  'Tree::Smart::!find' => make_sub($Ts, 'find', \@BogusKeys),
+  'Tree::Ternary::!search' => make_sub($Tt, 'search', \@BogusKeys),
+});
+
 $Sl = new List::SkipList;
 $Ts = new Tree::Smart;
 $Tt = new Tree::Ternary;
@@ -91,13 +112,6 @@ timethese( COUNT, {
   'Tree::RedBlack::ins ReverseKeys' => make_sub($Trb, 'insert', \@ReverseKeys),
   'Tree::Smart::ins ReverseKeys' => make_sub($Ts, 'insert', \@ReverseKeys),
   'Tree::Ternary::ins ReverseKeys' => make_sub($Tt, 'insert', \@ReverseKeys),
-});
-
-timethese( COUNT, {
-  'List::SkipList::find' => make_sub($Sl, 'find', \@RandomKeys),
-  'Tree::RedBlack::find' => make_sub($Trb, 'find', \@RandomKeys),
-  'Tree::Smart::find' => make_sub($Ts, 'find', \@RandomKeys),
-  'Tree::Ternary::search' => make_sub($Tt, 'search', \@RandomKeys),
 });
 
 

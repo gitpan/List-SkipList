@@ -8,7 +8,7 @@ use warnings;
 # no Carp::Assert;
 
 our $VERSION
- = '1.2';
+ = '1.3';
 
 use enum qw( HEADER KEY VALUE );
 
@@ -33,6 +33,13 @@ sub header {
 
   return ($hdr) ? ($self->[HEADER] = $hdr) : $self->[HEADER];
 }
+
+# sub prev {
+#   my ($self, $prev) = @_;
+# #   assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
+# #   assert( UNIVERSAL::isa($prev, __PACKAGE__) ), if DEBUG;
+#   return (@_ > 1) ? ( $self->[PREV] = $prev ) : $self->[PREV];
+# }
 
 sub level {
   my ($self) = @_;
@@ -90,7 +97,7 @@ use 5.006;
 use strict;
 use warnings; # should we register warnings?
 
-our $VERSION = '0.51';
+our $VERSION = '0.60';
 
 use AutoLoader qw( AUTOLOAD );
 use Carp qw( carp croak );
@@ -109,9 +116,7 @@ use constant ARGLIST => {
 
 # Caching the "finger" for the last insert allows sequential (sorted)
 # inserts to be sped up.  It does not seem to affect the performance
-# of non-sequential inserts.
-
-use constant CACHE_INSERT_FINGERS => 1; # [Present]
+# of non-sequential inserts. [Present]
 
 sub new {
   no integer;
@@ -127,14 +132,14 @@ sub new {
     P_LEVELS  => [ ],
     LASTNODE  => undef,                 # node with greatest key
     LASTKEY   => undef,                 # last key used by next_key
-    LASTINSRT => undef,                 # used by CACHE_INSERTION_FINGERS
+    LASTINSRT => undef,                 # cached insertion fingers
   };
 
   bless $self, $class;
 
   $self->_set_p( DEF_P ); # initializes P_LEVELS
 
-  {
+  if (@_) {
     my %args = @_;
     foreach my $arg_name (CORE::keys %args) {
       if (ARGLIST->{$arg_name}) {
@@ -185,16 +190,14 @@ sub clear {
   $self->{SIZE}     = 0;
   $self->{LASTNODE} = undef;
 
-  $self->{LASTINSRT} = undef,
-    if (CACHE_INSERT_FINGERS);
+  $self->{LASTINSRT} = undef;
 
   $self->reset;
 }
 
 sub _set_max_level {
-  my $self = shift;
+  my ($self, $level) = @_;
 #   assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
-  my $level = shift;
 #   assert( ($level>1) ), if DEBUG;
   $self->{MAXLEVEL} = $level;
 }
@@ -278,8 +281,10 @@ sub _random_level {
   return $level;
 }
 
-sub _search {
+sub _search_with_finger {
   my ($self, $key, $finger_ref) = @_;
+
+  use integer;
 
 #   assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
 #   assert( (!defined $finger_ref) || UNIVERSAL::isa($finger_ref, "ARRAY") ),
@@ -291,9 +296,9 @@ sub _search {
 #   assert( UNIVERSAL::isa( $list, BASE_NODE_CLASS ) ), if DEBUG;
 #   assert( $level >= 0 ), if DEBUG;
 
-  my @finger = ($finger_ref) ? @$finger_ref : ( );
+  $finger_ref ||= [ ];
 
-  my $x = $finger[ $level ] || $list;
+  my $x = $finger_ref->[ $level ] || $list;
 
 #   assert( defined $x ), if DEBUG;
 
@@ -301,58 +306,99 @@ sub _search {
   #   do { my $x = ... } while ($x)
   # doesn't work because it considers $x out of scope.
 
-  my $cmp = 0;
-
   # OPT: Benchmark shows that "my $fwd" w/in loop ~25% slower
 
-  my $fwd = undef;
-
-  use integer;
+  my $fwd;
+  my $cmp = 0;
 
   do {
     $fwd = $x->header()->[$level];
-    $cmp = (defined $fwd) ? $fwd->key_cmp($key) : 1; 
-    if ($cmp <= 0) {
-      $finger[$level] = $x;
-      $x = $fwd;
-    } elsif ($level >= 0) {
-      $finger[$level--] = $x;
+    # OPT: Benchmark tests show ($fwd) 8% faster than (defined $fwd)
+    $cmp = ($fwd) ? $fwd->key_cmp($key) : 1; 
+
+    if ($cmp >= 0) {
+      $finger_ref->[$level--] = $x;
     }
-  } while (($cmp != 0) && ($level>=0));
+    if ($cmp <= 0) {
+      $x = $fwd;
+    }
 
-#   assert( UNIVERSAL::isa($x, BASE_NODE_CLASS) ), if DEBUG;
+  } while (($cmp) && ($level>=0));
 
-  return ($x, \@finger, $cmp);
+  #   assert( UNIVERSAL::isa($x, BASE_NODE_CLASS) ), if DEBUG;
+
+  return ($x, $finger_ref, $cmp);
+
+}
+
+sub _search {
+  my ($self, $key, $finger_ref) = @_;
+
+  use integer;
+
+#   assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
+#   assert( (!defined $finger_ref) || UNIVERSAL::isa($finger_ref, "ARRAY") ),
+#     if DEBUG;
+
+  my $list   = $self->list;
+  my $level  = $list->level-1;
+
+#   assert( UNIVERSAL::isa( $list, BASE_NODE_CLASS ) ), if DEBUG;
+#   assert( $level >= 0 ), if DEBUG;
+
+  $finger_ref ||= [ ];
+
+  my $x = $finger_ref->[ $level ] || $list;
+
+#   assert( defined $x ), if DEBUG;
+
+  my $fwd;
+  my $cmp = 0;
+
+  do {
+    $fwd = $x->header()->[$level];
+    $cmp = ($fwd) ? $fwd->key_cmp($key) : 1; 
+    if ($cmp <= 0) {
+      $x = $fwd;
+    } else {
+      $level--;
+    }
+  } while (($cmp) && ($level>=0));
+
+  #   assert( UNIVERSAL::isa($x, BASE_NODE_CLASS) ), if DEBUG;
+
+  return ($x, $finger_ref, $cmp);
+
 }
 
 sub insert {
   my ($self, $key, $value, $finger) = @_;
 
+  use integer;
+
 #   assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
 
   my $list   = $self->list;
+  my $level  = $list->level;
 
   # We save the node and finger of the last insertion. If the next key
   # is larger, then we can use the "finger" to speed up insertions.
 
-  if (defined $finger) {
+  if ($finger) {
 #     assert( UNIVERSAL::isa($finger, "ARRAY") ), if DEBUG;
   } elsif (defined $self->{LASTINSRT}) {
-    if (CACHE_INSERT_FINGERS) {
-      my ($node, $ref) = @{ $self->{LASTINSRT} };
+    my ($node, $ref) = @{ $self->{LASTINSRT} };
     
-      if ($node->key_cmp($key) < 0) {
-	$finger = $ref;
-      }
+    if ($node->key_cmp($key) < 0) {
+      $finger = $ref;
     }
   }
 
-  my ($x, $update_ref, $cmp) = $self->_search($key, $finger);    
+  my ($x, $update_ref, $cmp) = $self->_search_with_finger($key, $finger);    
 
   if ($cmp == 0) {
     $x->value($value);
-    $self->{LASTINSRT} = [$x, $update_ref],
-      if (CACHE_INSERT_FINGERS);
+    $self->{LASTINSRT} = [$x, $update_ref];
   } else {
 
     my $new_level = $self->_random_level;
@@ -360,24 +406,32 @@ sub insert {
     # We limit $new_level to no more than 1+$list-level. The speed
     # improvement is quite noticeable. [Present]
 
-    if ($new_level > $list->level) {
-      $new_level  = 1 + $list->level;
-      $update_ref->[ $list->level ] = $list;
+    if ($new_level > $level) {
+       $new_level  = 1 + $level;
+       $update_ref->[ $level ] = $list;
     }
 
     my $node     = $self->_node_class->new( $key, $value );
     my $node_hdr = $node->header();
+    my $fing_hdr;
 
     for (my $i=0;$i<$new_level;$i++) {
-      $node_hdr->[$i] = $update_ref->[$i]->header()->[$i];
-      $update_ref->[$i]->header()->[$i] = $node;
+      $fing_hdr = $update_ref->[$i]->header();
+      $node_hdr->[$i] = $fing_hdr->[$i];
+      $fing_hdr->[$i] = $node;
     }
 
-    $self->{LASTNODE} = $node,
-      unless (defined $node->header()->[0]);
+#     my $next = $node_hdr->[0];
+#     if ($next) {
+#       $node->prev( $next->prev );
+#       $next->prev( $node );
+#     } else {
+#       $self->{LASTNODE} = $node;
+#     }
 
-    $self->{LASTINSRT} = [$node, $update_ref],
-      if (CACHE_INSERT_FINGERS);
+    $self->{LASTNODE} = $node, unless ($node_hdr->[0]);
+
+    $self->{LASTINSRT} = [$node, $update_ref];
 
     $self->{SIZE}++;
   }
@@ -399,7 +453,7 @@ sub delete {
 
   my $list = $self->list;
 
-  my ($x, $update_ref, $cmp) = $self->_search($key, $finger);
+  my ($x, $update_ref, $cmp) = $self->_search_with_finger($key, $finger);
 
   if ($cmp == 0) {
     my $value = $x->value;
@@ -425,11 +479,13 @@ sub delete {
 
     }
 
+#     my $next = $x->header()->[0];
+#     if ($next) { $next->prev( $x->prev ); }
+
     # There's probably a smarter way to handle this, but this is the
     # safest way.
 
-    $self->{LASTINSRT} = undef,
-      if (CACHE_INSERT_FINGERS);
+    $self->{LASTINSRT} = undef;
 
     $self->{SIZE} --;
 
@@ -459,6 +515,23 @@ sub exists {
   return ($cmp == 0);
 }
 
+sub find_with_finger {
+  my ($self, $key, $finger) = @_;
+#   assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
+
+#   if (defined $finger) {
+#     assert( UNIVERSAL::isa($finger, "ARRAY") ), if DEBUG;
+#   }
+
+  my ($x, $update_ref, $cmp) = $self->_search_with_finger($key, $finger);
+
+  if ($cmp == 0) {
+    return (wantarray) ? ($x->value, $update_ref) : $x->value;
+  } else {
+    return;
+  }
+}
+
 sub find {
   my ($self, $key, $finger) = @_;
 #   assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
@@ -470,15 +543,19 @@ sub find {
   my ($x, $update_ref, $cmp) = $self->_search($key, $finger);
 
   if ($cmp == 0) {
-    return (wantarray)? ($x->value, $update_ref) : $x->value;
+    return (wantarray) ? ($x->value, $update_ref) : $x->value;
   } else {
     return;
   }
 }
 
 sub last_key {
-  my ($self) = @_;
+  my ($self, $key, $finger, $value) = @_;
 #   assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
+
+  if (defined $key) {
+    $self->{LASTKEY} = [ $key, $finger || [ ], $value ];
+  }
 
   if (defined $self->{LASTKEY}) {
     return (wantarray) ?
@@ -486,22 +563,23 @@ sub last_key {
   } else {
     return;
   }
+
 }
 
 sub first_key {
-  my ($self) = @_;
+  my $self = shift;
 #   assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
 
   my $list = $self->list;
   my $fwd  = $list->header()->[0];
-  if (defined $fwd) {
-    $self->{LASTKEY} =
-      [$fwd->key, [( $list ) x $list->level] ];
-    return $self->last_key;
+  if ($fwd) {
+    return $self->last_key( $fwd->key, [( $list ) x $list->level],
+			    $fwd->value );
   } else {
     return;
   }
 }
+
 
 sub next_key {
   my $self = shift;
@@ -511,7 +589,7 @@ sub next_key {
   my $finger   = shift;
 
   unless (defined $last_key) {
-    ($last_key, $finger) = @{$self->{LASTKEY} || [ ]};
+    ($last_key, $finger) = $self->last_key;
   }
 
 #   if (defined $finger) {
@@ -519,14 +597,14 @@ sub next_key {
 #   }
 
   if (defined $last_key) {
-    my ($list, $update_ref, $cmp) = $self->_search($last_key, $finger);
+    my ($list, $update_ref, $cmp) =
+      $self->_search_with_finger($last_key, $finger);
 
     my $fwd  = $list->header()->[0];
  
     if ($cmp == 0) {
       if (defined $fwd) {
-	$self->{LASTKEY} = [$fwd->key, $update_ref];
-	$self->last_key;
+	$self->last_key($fwd->key, $update_ref, $fwd->value);
       } else {
 	return;
       }
@@ -538,9 +616,6 @@ sub next_key {
   }
 }
 
-# We could add the ability to tie hashes to skip lists, but it would
-# complicate how the autoloading features are set up.  So this might
-# be implemented in another module.
 
 BEGIN
   {
@@ -600,17 +675,31 @@ sub greatest {
   }
 }
 
-sub prev {
-  my $self = shift;
-#   assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
-  die "unimplemented method";
-}
-
 sub next {
   my $self = shift;
 #   assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
-  die "unimplemented method";
+
+  my ($key, $finger, $value) = $self->next_key;
+
+  if (defined $key) {
+    return ($key, $value)
+  } else {
+    return;
+  }
 }
+
+sub prev_key {
+  my $self = shift;
+#   assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
+  croak "unimplemented method";
+}
+
+sub prev {
+  my ($self) = @_;
+#   assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
+  croak "unimplemented method";
+}
+
 
 sub keys {
   my $self = shift;
@@ -658,11 +747,15 @@ sub copy {
   my $value;
   my $finger_cp = undef;
 
+  $self->reset();
+
   do {
-    ($value, $finger_or) = $self->find($key, $finger_or);
+    ($value, $finger_or) = $self->find_with_finger($key, $finger_or);
     my $finger_cp        = $list->insert($key, $value, $finger_cp);
     ($key, $finger_or)   = $self->next_key($key, $finger_or);
   } while (defined $key);
+
+  $self->reset();
 
   return $list;
 }
@@ -779,6 +872,7 @@ sub _debug {
       print STDERR " ", $i," ", $list->header()->[$i]
 	|| 'undef', "\n";
     }
+    print STDERR " P ", $list->prev() || 'undef', "\n";
     print STDERR "\n";
 
     $list = $list->header()->[0];
@@ -864,7 +958,7 @@ Specialized internal parameters may be configured:
 
   $list = new SkipList( max_level => 32 );
 
-Defines a different maximum list level, or C<max_level>.  (The default
+Defines a different maximum list level, or L</max_level>.  (The default
 is 32.) It is generally a good idea to leave this value alone unless
 you are using small lists.
 
@@ -907,20 +1001,27 @@ This may also be used with  L<search fingers|/"About Search Fingers">:
 
   if ($list->exists( $key, $finger )) { ... }
 
-=item find
+=item find_with_finger
 
-  $value = $list->find( $key );
+  $value = $list->find_with_finger( $key );
 
 Searches for the node associated with the key, and returns the value. If
 the key cannot be found, returns C<undef>.
 
 L<Search fingers|/"About Search Fingers"> may also be used:
 
-  $value = $list->find( $key, $finger );
+  $value = $list->find_with_finger( $key, $finger );
 
-To obtain the search finger for a key, call C<find> in a list context:
+To obtain the search finger for a key, call L</find> in a list context:
 
-  ($value, $finger) = $list->find( $key );
+  ($value, $finger) = $list->find_with_finger( $key );
+
+=item find
+
+  $value = $list->find( $key );
+
+Works exactly like L</find_with_finger> except that no updated search
+finger is retured.
 
 =item search
 
@@ -937,7 +1038,7 @@ L<search finger|/"About Search Fingers">:
 
   ($key, $finger) = $list->first_key;
 
-A call to C<first_key> implicitly calls C<reset>.
+A call to L</first_key> implicitly calls L</reset>.
 
 =item next_key
 
@@ -959,27 +1060,45 @@ If no arguments are called,
 
   $key = $list->next_key;
 
-then the value of C<last_key> is assumed:
+then the value of L</last_key> is assumed:
 
   $key = $list->next_key( $list->last_key );
+
+=item next
+
+  ($key, $value) = $list->next( $last_key, $finger );
+
+Returns the next key-value pair.
+
+C<$last_key> and C<$finger> are optional.
+
+This is an autoloading method.
 
 =item last_key
 
   $key = $list->last_key;
 
-  ($key, $finger) = $list->last_key;
+  ($key, $finger, $value) = $list->last_key;
 
 Returns the last key or the last key and finger returned by a call to
-C<first_key> or C<next_key>.
+L</first_key> or L</next_key>.
 
-Deletions and inserts will invalidate the C<last_key> value, although
-they may not reset the last key.
+Deletions and inserts will invalidate the L</last_key> value, although
+they may not L</reset> the last key.
+
+Values for L</last_key> can also be set by including parameters,
+however this feature is meant for I<internal use only>:
+
+  $list->last_key( $key, $finger, $value );
+
+No checking is done to make sure that the C<$key> and C<$value> pairs
+match, or that the C<$finger> is valid.
 
 =item reset
 
   $list->reset;
 
-Resets the C<last_key> to C<undef>. 
+Resets the L</last_key> to C<undef>. 
 
 =item delete
 
@@ -992,7 +1111,7 @@ L<Search fingers|/"About Search Fingers"> may also be used:
 
   $value = $list->delete( $key, $finger );
 
-Calling C<delete> in a list context I<will not> return a search
+Calling L</delete> in a list context I<will not> return a search
 finger.
 
 =item clear
@@ -1041,7 +1160,7 @@ This method affects both lists.  The L</"header"> of the last node of
 C<$list1> points to the first node of C<$list2>, so changes to one
 list may affect the other list.
 
-If you do not want this entanglement, use the C<merge> or C<copy>
+If you do not want this entanglement, use the L</merge> or L</copy>
 methods instead:
 
   $list1->merge( $list2 );
@@ -1083,7 +1202,7 @@ This is an autoloading method.
   @values = $list->values;
 
 Returns a list of values (corresponding to the keys returned by the
-C<keys> method).
+L</keys> method).
 
 This is an autoloading method.
 
@@ -1096,9 +1215,9 @@ developer use only.  These may change in future versions.
 
 =over
 
-=item _search
+=item _search_with_finger
 
-  ($node, $finger, $cmp) = $list->_search( $key );
+  ($node, $finger, $cmp) = $list->_search_with_finger( $key );
 
 Searches for the node with a key.  If the key is found, that node is
 returned along with a L</"header">.  If the key is not found, the previous
@@ -1108,14 +1227,24 @@ Note that the value of C<$cmp>
 
   $cmp = $node->key_cmp( $key )
 
-is returned because it is already determined by C<_search>.
+is returned because it is already determined by L</_search>.
 
 Search fingers may also be specified:
 
-  ($node, $finger, $cmp) = $list->_search( $key, $finger );
+  ($node, $finger, $cmp) = $list->_search_with_finger( $key, $finger );
 
 Note that the L</"header"> is actually a
 L<search finger|/"About Search Fingers">.
+
+=item _search
+
+  ($node, $finger, $cmp) = $list->_search( $key, [$finger] );
+
+Same as L</_search_with_finger>, only that a search finger is not returned.
+(Actually, an initial "dummy" finger is returned.)
+
+This is useful for searches where a finger is not needed.  The speed
+of searching is improved.
 
 =item p
 
@@ -1127,7 +1256,7 @@ Returns the I<P> value.  Intended for internal use only.
 
   $max = $list->max_level;
 
-Returns the maximum level that C<_random_level> can generate.
+Returns the maximum level that L</_random_level> can generate.
 
 =item _random_level
 
@@ -1140,7 +1269,7 @@ node will have 1 level is I<P>; the probability that a node will have
 2 levels is I<P^2>; the probability that a node will have 3 levels is
 I<P^3>, et cetera.
 
-The value will never be greater than C<max_level>.
+The value will never be greater than L</max_level>.
 
 =item list
 
@@ -1164,7 +1293,7 @@ Returns the number of levels in the list.  It is the same as
   ($node, $finger) = _first_node;
 
 Returns the first node with a key (the second node) in a list and the
-finger.  This is used by the C<merge> method.
+finger.  This is used by the L</merge> method.
 
 This is an autoloading method.
 
@@ -1377,7 +1506,7 @@ The following should not work:
   $value2            = $list2->find('foo', $finger);
 
 One useful feature of fingers is with enumerating all keys using the
-C<first_key> and C<next_key> methods:
+L</first_key> and L</next_key> methods:
 
   ($key, $finger) = $list->first_key;
 
@@ -1386,7 +1515,7 @@ C<first_key> and C<next_key> methods:
     ($key, $finger) = $list->next_key($key, $finger);
   }
 
-See also the C<keys> method for generating a list of keys.
+See also the L</keys> method for generating a list of keys.
 
 =head2 Similarities to Tree Classes
 
@@ -1403,7 +1532,7 @@ are not commonly used.
 One thing that differentiates this module from other modules is the
 flexibility in defining a custom node class.
 
-See the included C<Benchmark.txt> file for performance comparisons.
+See the included F<Benchmark.txt> file for performance comparisons.
 
 =head1 TODO
 

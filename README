@@ -79,17 +79,27 @@ DESCRIPTION
         <http://en.wikipedia.org/wiki/Skip_list>
 
 REVISION HISTORY
-    Changes since v0.50:
+    Changes since v0.51:
 
-    0.51  Mon Apr 12 2004
-	- fixed bug with next_key method called without first_key
-	- added tests for this bug
-	- added "heavy" test to distribution
-	- minor optimizations of delete method
-	- assertions are no longer required (which leads to ~3% speedup)
-	  and removed section in POD about assertions
-	- removed commented-out references to forward method
-	- minor updates to source code comments
+    0.60  Sat Apr 24 2004
+	- updates to POD
+	- cleaned up comments
+	- added next function
+	- redid last_key, first_key and next_key functions
+	- last_key accepts arguments to modify LASTKEY
+	- changed calls to die to croak
+	- added experimental hooks to implement prev and prev_key methods
+	- added stub prev_key method
+	- bug fix: reset method called during copy method
+	- added more tests to heavy test script
+	* renamed find to find_with_finger and added find for searches
+          which do not return updated fingers
+	* renamed _search to _search_with_finger and added _search for
+	  searches which do not return updated fingers
+	- modified next_key test to check for initial key of "0"
+	- removed if (CACHE_INSERT_FINGERS) tests
+	- additional optimizations and code cleanup
+	- added test to search for non-existent keys in Benchmark.pl
 
     A detailed revision history is in the Changes file included with
     this distribution.
