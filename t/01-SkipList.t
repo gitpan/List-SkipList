@@ -1,12 +1,12 @@
 package NumericNode;
 
-use Carp::Assert;
+# use Carp::Assert;
 
 our @ISA = qw( List::SkipList::Node );
 
 sub validate_key {
   my $self = shift;
-  assert( UNIVERSAL::isa($self, "List::SkipList::Node") ), if DEBUG;
+#   assert( UNIVERSAL::isa($self, "List::SkipList::Node") ), if DEBUG;
 
   my $key = shift;
   return ($key =~ /^\-?\d+$/); # make sure key is simple natural number
@@ -14,7 +14,7 @@ sub validate_key {
 
 sub key_cmp {
   my $self = shift;
-  assert( UNIVERSAL::isa($self, "List::SkipList::Node") ), if DEBUG;
+#   assert( UNIVERSAL::isa($self, "List::SkipList::Node") ), if DEBUG;
 
   my $left  = $self->key;
   my $right = shift;

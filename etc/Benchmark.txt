@@ -1,19 +1,39 @@
 
 PERFORMANCE
     An unscientific comparison of module performance for List::SkipList
-    against other pure-Perl modules, using Benchmark.pl:
+    against other pure-Perl modules with similar functionality:
 
-                             Ordered  Reversed Random          Failed
-      Module        Version  Inserts  Inserts  Inserts  Finds  Finds
+                             Ordered  Reversed Random           Failed
+      Module        Version  Inserts  Inserts  Inserts  Finds   Finds
 
-      List::SkipList  0.63     3.49     2.19     3.67    2.94    2.98
-      Tree::RedBlack  0.3      6.24     6.15     3.80    2.99    3.05
-      Tree::Smart     0.01     3.59     3.61    16.86   14.62   13.47
-      Tree::Ternary   0.03    12.13    11.84     9.98    4.21    2.19
+      List::SkipList  0.64     3.39     2.12     3.81    3.13     2.95
+      Tree::BPTree    1.06    10.21     8.73     7.71    2.65     4.56(1)
+      Tree::RedBlack  0.3      6.14     6.00     3.85    2.77     2.93
+      Tree::Smart     0.01     3.51     3.54    17.20   14.22(3) 13.47
 
-    Numbers in seconds per 10,000 operations on a set of randomly generated
-    keys on a machine running Windows XP Professional, Pentium III 795 MHz,
-    320 MB RAM, using ActiveState Perl 5.8.3.809.
+                              Exists   Deletes   
+
+      List::SkipList           2.93      3.24
+      Tree::BPTree             N/A       2.67
+      Tree::RedBlack           N/A       2.98(2)
+      Tree::Smart              3.56      3.64
+
+    (1) Numerous "Use of uninitialized value in string comparison"
+        warnings were generated.
+
+    (2) The delete operation in this module has bugs, and there were often
+        fatal errors during testing.
+
+    (3) Splay trees rebalance themselves on find operations.  This test
+        was of a single search query for each element, and so is not an
+        accurate guage of performance.
+
+    Numbers in mean seconds per 100+ x 10,000 operations on a set of
+    randomly generated keys on a machine running Windows XP Pro,
+    Pentium III 795 MHz, 320 MB RAM, using ActiveState Perl 5.8.3.809.
+
+    Each module was tested in a separate script to minimize the
+    effects of memory issues.
 
 MEMORY USAGE
     Comparison of memory usage of objects before and after inserting
@@ -22,9 +42,16 @@ MEMORY USAGE
       Module        Version    Before       After
 
       List::SkipList  0.61      2,345     2,630,065
-      Tree::RedBlack  0.3         N/A           N/A
+      Tree::BPTree    1.06        717     3,226,249 (1)
+      Tree::RedBlack  0.3         N/A           N/A (2)
       Tree::Smart     0.01        171     2,970,427
-      Tree::Ternary   0.03        136    83,942,412
+
+    (1) Devel::Size returned "CV isn't complete" warnings for the
+        object, so sizes may not be accurate.
+
+    (2) Devel::Size was unable to obtain useful numbers from the
+        object.  It claimed that after 10,000 inserted keys only 292
+        bytes were used.
 
 DETAILS
     Some of the modules in the comparison are very early versions, and
@@ -33,27 +60,18 @@ DETAILS
     It can be argued that this comparison is more about optimizations
     of Perl code than of algorithms.
 
-    Deletions are not shown in the above table because not all modules
-    support deletions.  (For List::SkipList, 4.43; for Tree::Smart,
-    1.29.)
- 
     Some differences should be noted for each module:
 
 List::SkipList
-    Skip lists use a non-deterministic (randomized) algorithm, so
-    numbers will vary between runs.
+    Skip lists use a non-deterministic algorithm, so numbers will vary
+    between runs.  The standard deviation for some operations ranged
+    between 0.21 (for various insertions) to 0.34 (searches) to 0.68
+    (exists and deletes).
 
-Tree::RedBlack
-    Devel::Size was unable to obtain useful numbers from the object.
-    It claimed that after 10,000 inserted keys only 292 bytes were
-    used.
+Tree::Ternary
+    Intended for storing dictionaries, where each character is a node
+    in the tree.  It is for storing strings only, with no associated
+    value pairs.
 
-    In running Benchmark.pl with tests for the modules Tree::Smart and
-    Tree::Ternary commented out, Tree::RedBlack showed a noticeable
-    improvment.
-
-Tree::Smart
-    Uses splay trees, which optimize themselves based on which nodes
-    one uses most often.
-
-
+    Comparisons were removed, since this type of tree has a different
+    purpose.

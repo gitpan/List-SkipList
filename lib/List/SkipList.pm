@@ -8,17 +8,17 @@ use warnings;
 # no Carp::Assert qw(assert DEBUG);
 
 our $VERSION
- = '1.35';
+ = '1.36';
 
 use enum qw( HEADER=0 KEY VALUE );
 
 sub new {
-  my $class = shift;
+  my ($class, $key, $value, $hdr) = @_;
   my $self  = [ ];
 
-  $self->[KEY]    = shift;
-  $self->[VALUE]  = shift;
-  $self->[HEADER] = shift || [ ];
+  $self->[KEY]    = $key;
+  $self->[VALUE]  = $value;
+  $self->[HEADER] = $hdr || [ ];
 
   bless $self, $class;
 }
@@ -27,7 +27,7 @@ sub header {
   my ($self, $hdr) = @_;
 
 #   assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
-#   assert( (!$hdr) || ref($hdr) eq "ARRAY" ), if DEBUG;
+#   assert( (!$hdr) || ref($hdr) eq 'ARRAY' ), if DEBUG;
 
   ($hdr) ? ( $self->[HEADER] = $hdr ) : $self->[HEADER];
 }
@@ -69,7 +69,7 @@ sub key_cmp {
   # OPT: It would be nice to use $self->key instead of $self->[KEY],
   # but we gain a nearly 25% speed improvement!
 
-  $self->[KEY] cmp $right;
+  ($self->[KEY] cmp $right);
 }
 
 sub validate_value {
@@ -86,6 +86,8 @@ sub value {
 
   (@_ > 1) ? ( $self->[VALUE] = $value ) : $self->[VALUE];
 }
+
+1;
 
 package List::SkipList::Header;
 
@@ -113,6 +115,8 @@ sub value {
   return;
 }
 
+1;
+
 package List::SkipList::Null;
 
 use 5.006;
@@ -121,7 +125,7 @@ use warnings;
 # use Carp::Assert qw( assert DEBUG );
 
 our $VERSION
- = '0.03';
+ = '0.04';
 
 our @ISA = qw( List::SkipList::Node );
 
@@ -139,15 +143,7 @@ sub key_cmp {
   1;   # Note that the header returns "1" instead of "-1"!
 }
 
-sub key {
-#    assert( 0 ), if DEBUG;
-  return;
-}
-
-sub value {
-#    assert( 0 ), if DEBUG;
-  return;
-}
+1;
 
 package List::SkipList;
 
@@ -155,7 +151,7 @@ use 5.006;
 use strict;
 use warnings;
 
-our $VERSION = '0.63';
+our $VERSION = '0.64';
 
 use AutoLoader qw( AUTOLOAD );
 use Carp qw( carp croak );
@@ -168,9 +164,6 @@ use constant BASE_NODE_CLASS => 'List::SkipList::Node';
 
 my $NULL; INIT { $NULL = new List::SkipList::Null(); }
 
-# Caching the "finger" for the last insert allows sequential (sorted)
-# inserts to be sped up.  It does not seem to affect the performance
-# of non-sequential inserts. [Present]
 
 sub new {
   no integer;
@@ -241,9 +234,9 @@ sub clear {
   $self->{LAST_SIZE_TH}   = 0;
   $self->{SIZE_LEVEL}     = 2;
 
-  my @header = ( undef ) x $self->_new_node_level;
+  my $hdr = [ (undef) x $self->{SIZE_LEVEL} ];
 
-  $self->{LIST} = new List::SkipList::Header( undef, undef, \@header );
+  $self->{LIST} = new List::SkipList::Header( undef, undef, $hdr );
 
 #   assert( $self->list->level > 0 ), if DEBUG;
 #   assert( UNIVERSAL::isa($self->{LIST}, BASE_NODE_CLASS) ), if DEBUG;
@@ -364,7 +357,7 @@ sub _search_with_finger {
   use integer;
 
 #   assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
-#   assert( (!defined $finger) || UNIVERSAL::isa($finger, "ARRAY") ),
+#   assert( (!defined $finger) || UNIVERSAL::isa($finger, 'ARRAY') ),
 #     if DEBUG;
 
   my $list   = $self->list;
@@ -385,17 +378,18 @@ sub _search_with_finger {
   #   my $x; do { $x = ... } while ($x)
   #
 
-  my ($fwd, $cmp);
+  my $fwd;
+  my $cmp = -1;
 
   # This version of the search algorithm is based on Schneier, 1994.
 
   do {
-    while ( ($fwd = $node->header()->[$level]||$NULL) &&
+    while ( ($fwd = $node->header()->[$level]) &&
 	    ($cmp = $fwd->key_cmp($key)) < 0) {
       $node = $fwd;
     }
     $finger->[$level] = $node;
-  } while (($cmp) && (--$level>=0));
+  } while ((--$level>=0) && ($cmp));
 
   $node = $fwd, unless ($cmp);
   
@@ -410,7 +404,7 @@ sub _search {
   use integer;
 
 #   assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
-#   assert( (!defined $finger) || UNIVERSAL::isa($finger, "ARRAY") ),
+#   assert( (!defined $finger) || UNIVERSAL::isa($finger, 'ARRAY') ),
 #     if DEBUG;
 
   my $list   = $self->list;
@@ -427,14 +421,15 @@ sub _search {
 
   # This version of the search algorithm is based on Schneier, 1994.
 
-  my ($fwd, $cmp);
+  my $fwd;
+  my $cmp = -1;
 
   do {
-    while ( ($fwd = $node->header()->[$level]||$NULL) &&
+    while ( ($fwd = $node->header()->[$level]) &&
 	    ($cmp = $fwd->key_cmp($key)) < 0) {
       $node = $fwd;
     }
-  } while (($cmp) && (--$level>=0));
+  } while ((--$level>=0) && ($cmp));
 
   $node = $fwd, unless ($cmp);
 
@@ -463,7 +458,7 @@ sub insert {
       if ($node->key_cmp($key) <= 0);
   }
 
-#   assert( UNIVERSAL::isa($finger, "ARRAY") ), if DEBUG;
+#   assert( UNIVERSAL::isa($finger, 'ARRAY') ), if DEBUG;
 
   ($node, $finger, $cmp) = $self->_search_with_finger($key, $finger);
 
@@ -481,6 +476,7 @@ sub insert {
       $node_hdr->[$i] = $fing_hdr->[$i];
       $fing_hdr->[$i] = $node;
     }
+
 
 #     my $next = $node_hdr->[0];
 #     if ($next) {
@@ -510,7 +506,7 @@ sub delete {
 #   assert( defined $key ), if DEBUG;
 # 
 #   if (defined $finger) {
-#     assert( UNIVERSAL::isa($finger, "ARRAY") ), if DEBUG;
+#     assert( UNIVERSAL::isa($finger, 'ARRAY') ), if DEBUG;
 #   }
 
   my $list = $self->list;
@@ -570,7 +566,7 @@ sub exists {
 #   assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
 
 #   if (defined $finger) {
-#     assert( UNIVERSAL::isa($finger, "ARRAY") ), if DEBUG;
+#     assert( UNIVERSAL::isa($finger, 'ARRAY') ), if DEBUG;
 #   }
 
   (($self->_search($key, $finger))[2] == 0);
@@ -581,7 +577,7 @@ sub find_with_finger {
 #   assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
 
 #   if (defined $finger) {
-#     assert( UNIVERSAL::isa($finger, "ARRAY") ), if DEBUG;
+#     assert( UNIVERSAL::isa($finger, 'ARRAY') ), if DEBUG;
 #   }
 
   my ($x, $update_ref, $cmp) = $self->_search_with_finger($key, $finger);
@@ -597,12 +593,12 @@ sub find {
 #   assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
 
 #   if (defined $finger) {
-#     assert( UNIVERSAL::isa($finger, "ARRAY") ), if DEBUG;
+#     assert( UNIVERSAL::isa($finger, 'ARRAY') ), if DEBUG;
 #   }
 
-  my ($x, $update_ref, $cmp) = $self->_search($key, $finger);
+  my ($node, $update_ref, $cmp) = $self->_search($key, $finger);
 
-  ($cmp == 0) ? $x->value : undef;
+  ($cmp == 0) ? $node->value : undef;
 }
 
 sub last_key {
@@ -649,7 +645,7 @@ sub next_key {
   }
 
 #   if ($finger) {
-#     assert( ref($finger) eq "ARRAY" ), if DEBUG;
+#     assert( ref($finger) eq 'ARRAY' ), if DEBUG;
 #   }
 
   if (defined $last_key) {
@@ -828,7 +824,7 @@ sub merge {
   my ($node2, $finger2) = $list2->_first_node;
 
 #   assert( ref($node1) eq ref($node2) ), if DEBUG;
-#   assert( ref($finger1) eq "ARRAY" ), if DEBUG;
+#   assert( ref($finger1) eq 'ARRAY' ), if DEBUG;
 
   while ((defined $node1) || (defined $node2)) {
 
@@ -920,7 +916,7 @@ sub _debug {
 
   my $list   = $self->list;
 
-  while (defined $list) {
+  while ($list) {
     print STDERR
       $list->key||'undef', "=", $list->value||'undef'," ", $list,"\n";
 
@@ -928,7 +924,7 @@ sub _debug {
       print STDERR " ", $i," ", $list->header()->[$i]
 	|| 'undef', "\n";
     }
-    print STDERR " P ", $list->prev() || 'undef', "\n";
+#     print STDERR " P ", $list->prev() || 'undef', "\n";
     print STDERR "\n";
 
     $list = $list->header()->[0];
@@ -1507,28 +1503,23 @@ numeric instead of string comparisons:
 
   package NumericNode;
 
-  use Carp::Assert; # this is required since the parent uses this
-
   our @ISA = qw( List::SkipList::Node );
 
   sub key_cmp {
     my $self = shift;
-    assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
 
     my $left  = $self->key;  # node key
     my $right = shift;       # value to compare the node key with
 
-    # We should gracefully handle $left being undefined
-    unless (defined $left) { return -1; }
+    unless ($self->validate_key($right)) {
+      die "Invalid key: \'$right\'"; }
 
     return ($left <=> $right);
   }
 
   sub validate_key {
     my $self = shift;
-    assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
-
-    my $key = shift;
+    my $key  = shift;
     return ($key =~ s/\-?\d+(\.\d+)?$/); # test if key is numeric
   }
 
@@ -1660,7 +1651,11 @@ Another article worth reading is by Bruce Schneier, "Skip Lists:
 They're easy to implement and they work",
 L<Doctor Dobbs Journal|http://www.ddj.com>, January 1994.
 
+L<Tie::Hash::Sorted> maintains a hash where keys are sorted.  In many
+cases this is faster, uses less memory (because of the way Perl5
+manages memory), and may be more appropriate for some uses.
+
 If you need a keyed list that preserves the order of insertion rather
-than sorting keys, see L<List::Indexed>.
+than sorting keys, see L<List::Indexed> or L<Tie::IxHash>.
 
 =cut

@@ -1,6 +1,15 @@
 Revision history for Perl extension List::SkipList. (Changes which may
 not be backwards compatible are marked with an asterisk '*'.)
 
+0.64 Thu June  3 2004
+        - updated examples in documentation of custom node
+	- minor optimizations and code cleanup
+	- commented-out call to prev() in _debug
+	- removed use of Carp::Assert in tests
+	- redesigned benchmark script and included parse-out.pl
+	- updated Benchmark.txt
+	- updated README
+
 0.63  Fri May 28 2004
 	- The default value of P is now 0.25, which appears to yield
 	  better results in tests.

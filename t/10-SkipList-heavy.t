@@ -13,7 +13,7 @@ use constant SIZE => 100;
 
 use Test;
 BEGIN { plan tests => 2+(16*SIZE) };
-use List::SkipList 0.63;
+use List::SkipList 0.64;
 ok(1);
 
 my @Keys = ();

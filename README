@@ -51,11 +51,11 @@ DESCRIPTION
       asymptotic expected time bounds as balanced trees and are
       simpler, faster and use less space.(*)
 
-    This particular implementation may not necessarily be faster or
-    use less space, but in superficial testing, it does appear to be a
-    reasonably faster substitute for some tree modules.  See the
-    included Benchmark.txt file for comparisons with other Perl
-    modules.
+    This implementation may not be faster or use less space, but in
+    superficial testing, it does appear to be a reasonably faster
+    substitute for some pure-Perl tree modules.  (However, see the
+    included Benchmark.txt file for comparisons with similar Perl
+    modules, as well as the SEE ALSO section below.)
 
     Skip lists are similar to linked lists, except that they have
     random links at various levels that allow searches to skip over
@@ -79,35 +79,8 @@ DESCRIPTION
         <http://en.wikipedia.org/wiki/Skip_list>
 
 REVISION HISTORY
-    Changes since v0.60:
+    Changes since v0.63:
 
-    0.63  Fri May 28 2004
-	- The default value of P is now 0.25, which appears to yield
-	  better results in tests.
-	* renamed _random_level to _new_node_level
-	- SIZE_THRESHOLD/SIZE_LEVEL now decrease with deletions
-	- additional minor optimizations and code cleanup
-	- optimizations of Header and Null node types
-	- updated tests
-	- Benchmark: re-commented-out delete test for Tree::RedBlack
-          (which was accidentally uncommented in v0.62)
-
-    0.62  Tue May 18 2004
-	- fixed typo in (commented-out) assertion
-	- additional minor optimizations and code cleanup
-	- updated tests
-	- corrected README
-
-    0.61  Mon May 17 2004
-	* find no longer returns a finger in array context
-	* header is now a special subclass of List::SkipList::Node
-	- added special Null subclass of Header
-	- added null() method to return global null node
-	- a lot of minor code optimizations
-	- added comments
-	- maximum level of new nodes changed so that it is based on size
-          of list
-	- updated Benchmark.txt file
 
     A detailed revision history is in the Changes file included with
     this distribution.
@@ -129,3 +102,8 @@ SEE ALSO
     See the article "A Skip List Cookbook" (William Pugh, 1989), or
     similar ones by the author at http://www.cs.umd.edu/~pugh/ which
     discuss skip lists.
+
+    Because of the way Perl manages memory, you may be better off
+    using a hash with sorted keys (such as Tie::Hash::Sorted) rather
+    than maintaining a sorted dictionary using this or similar
+    modules.
