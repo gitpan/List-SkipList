@@ -1,6 +1,7 @@
 Changes
 Makefile.PL
 MANIFEST
+META.yml
 README
 SkipList.pm
 test.pl

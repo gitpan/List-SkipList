@@ -1,0 +1,13 @@
+# http://module-build.sourceforge.net/META-spec.html
+#XXXXXXX This is a prototype!!!  It will change in the future!!! XXXXX#
+name:         List-SkipList
+version:      0.31
+version_from: SkipList.pm
+installdirs:  site
+requires:
+    AutoLoader:                    0
+    Carp:                          0
+    Carp::Assert:                  0.17
+
+distribution_type: module
+generated_by: ExtUtils::MakeMaker version 6.17

@@ -27,16 +27,17 @@ DESCRIPTION
     More information is available in the module documentation.
 
 REVISION HISTORY
-    Changes since v0.21:
+    Changes since v0.30:
 
-    0.30  Tue Dec  2 2003
-	- ability to tie hashes
-	- made some methods autoloading
-	- added last_key and reset methods to allow auto-enumeration
-	- added least, greatest, keys and values methods
-	- added _first_node, merge, append and copy methods
-	- insert now returns a finger
-	- more updates to documentation
+    0.31  Fri Feb 13 2004
+	- removed memoized node example from POD
+	- reformatted E-mail addresses in various files to foil
+	  spam harvesters
+	- changes calls to keys to CORE::keys [Bug 5317]
+	- added version to List::SkipList::Node
+	- corrected errors in POD formatting
+	- corrected and updated POD
+	- added META.yml file to distribution
 
 CAVEATS
     This is a prototype module and may contain bugs.
@@ -46,12 +47,12 @@ CAVEATS
     many repeated attempts.
 
 AUTHOR
-    Robert Rothenberg <rrwo@cpan.org>
+    Robert Rothenberg <rrwo[at]cpan.org>
 
 LICENSE
-    Copyright (c) 2003 Robert Rothenberg. All rights reserved. This program
-    is free software; you can redistribute it and/or modify it under the
-    same terms as Perl itself.
+    Copyright (c) 2003-2004 Robert Rothenberg. All rights reserved. This
+    program is free software; you can redistribute it and/or modify it
+    under the same terms as Perl itself.
 
 SEE ALSO
     See the article *A Skip List Cookbook* (William Pugh, 1989), or similar

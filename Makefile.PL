@@ -8,12 +8,13 @@ WriteMakefile(
       'AutoLoader'   => 0,
       'Carp'         => 0,
       'Carp::Assert' => 0.17,
-      'warnings'     => 0,
+#      'warnings'     => 0,
     }, 
     ($] >= 5.005 ?    ## Add these new keywords supported since 5.005
       (
 #        DISTNAME   => 'List::SkipList', 
 #        ABSTRACT_FROM => 'SkipList.pm', # retrieve abstract from module
        ABSTRACT   => 'Skip list implementation in Perl',
-       AUTHOR     => 'Robert Rothenberg <rrwo@cpan.org>') : ()),
+       AUTHOR     => 'Robert Rothenberg <rrwo[at]cpan.org>') : ()),
 );
+

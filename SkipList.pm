@@ -6,9 +6,12 @@ use warnings;
 use Carp;
 use Carp::Assert;
 
-# List::SkipList::Node version is 0.03 - we cannot define it here
-# because MakeMaker gets confused and pulls the first version
-# definition string it sees
+# List::SkipList::Node version is 0.04 - we cannot define it here in
+# one line because MakeMaker gets confused and pulls the first version
+# definition string it sees. (rt.cpan.org issues #4504).
+
+our $VERSION
+ = '0.04';
 
 sub new {
   my $class = shift;
@@ -22,7 +25,7 @@ sub new {
   {
     my %ARGLIST = ( map { $_ => 1 } qw( key value header ) );
     my %args = @_;
-    foreach my $arg_name (keys %args) {
+    foreach my $arg_name (CORE::keys %args) {
       if ($ARGLIST{$arg_name}) {
 	$self->$arg_name( $args{ $arg_name } );
       } else {
@@ -140,7 +143,7 @@ use 5.006;
 use strict;
 use warnings;
 
-our $VERSION = '0.30';
+our $VERSION = '0.31';
 
 use AutoLoader 'AUTOLOAD';
 use Carp;
@@ -170,7 +173,7 @@ sub new {
   {
     my %ARGLIST = ( map { $_ => 1 } qw( max_level p node_class ) );
     my %args = @_;
-    foreach my $arg_name (keys %args) {
+    foreach my $arg_name (CORE::keys %args) {
       if ($ARGLIST{$arg_name}) {
 	my $method = "_set_" . $arg_name;
 	$self->$method( $args{ $arg_name } );
@@ -810,10 +813,10 @@ exceeds the target key, then it descends a level.
 Skip lists generally perform as well as balanced trees for searching
 but do not have the overhead with respect to inserting new items.
 
-For more information on skip lists, see the L<SEE ALSO> section below.
+For more information on skip lists, see the L</"SEE ALSO"> section below.
 
 Note: Only alphanumeric keys are supported.  To use numeric or other
-types of keys, see L<Customizing the Node Class> below.
+types of keys, see L</"Customizing the Node Class"> below.
 
 =head2 Methods
 
@@ -829,27 +832,27 @@ Creates a new skip list.  C<max_level> will default to C<32> if it is
 not specified.  It is generally a good idea to leave this value alone
 unless you are using small lists.
 
-The initial list (see the L<list> method) will be a L<random|_random_level>
-number of levels, and will increase over time if inserted nodes have higher
-levels.
+The initial list (see the L</"list"> method) will be a
+L<random|/"_random_level"> number of levels, and will increase over time
+if inserted nodes have higher levels.
 
 You can also control the probability used to determine level sizes by
-setting the L<P|p> value:
+setting the L<P|/"p"> value:
 
   $list = new SkipList( p => 0.5 );
 
 The value defaults to C<0.5>.
 
 For more information on what these values mean, consult the references
-below in the L<SEE ALSO> section.
+below in the L</"SEE ALSO"> section.
 
-If you need to use a different L<node class|Node Methods> for using
-customized L<comparison|key_cmp> routines, you will need to specify a
+If you need to use a different L<node class|/"Node Methods"> for using
+customized L<comparison|/"key_cmp"> routines, you will need to specify a
 different class:
 
   $list = new SkipList( node_class => 'MyNodeClass' );
 
-See the L<Customizing the Node Class> section below.
+See the L</"Customizing the Node Class"> section below.
 
 =item insert
 
@@ -857,7 +860,7 @@ See the L<Customizing the Node Class> section below.
 
 Inserts a new node into the list.
 
-You may also use a L<search finger|About Search Fingers> with insert,
+You may also use a L<search finger|/"About Search Fingers"> with insert,
 provided that the finger is for a key that occurs earlier in the list:
 
   $list->insert( $key, $value, $finger );
@@ -872,7 +875,7 @@ of producing corrupted lists.
 Returns true if there exists a node associated with the key, false
 otherwise.
 
-This may also be used with  L<search fingers|About Search Fingers>:
+This may also be used with  L<search fingers|/"About Search Fingers">:
 
   if ($list->exists( $key, $finger )) { ... }
 
@@ -883,7 +886,7 @@ This may also be used with  L<search fingers|About Search Fingers>:
 Searches for the node associated with the key, and returns the value. If
 the key cannot be found, returns C<undef>.
 
-L<Search fingers|About Search Fingers> may also be used:
+L<Search fingers|/"About Search Fingers"> may also be used:
 
   $value = $list->find( $key, $finger );
 
@@ -898,7 +901,7 @@ To obtain the search finger for a key, call C<find> in a list context:
 Returns the first key in the list.
 
 If called in a list context, will return a
-L<search finger|About Search Fingers>:
+L<search finger|/"About Search Fingers">:
 
   ($key, $finger) = $list->first_key;
 
@@ -916,7 +919,7 @@ Search fingers may also be used to improve performance:
   $key = $list->next_key( $last_key, $finger );
 
 If called in a list context, will return a
-L<search finger|About Search Fingers>:
+L<search finger|/"About Search Fingers">:
 
   ($key, $finger) = $list->next_key( $last_key, $finger );
 
@@ -953,7 +956,7 @@ Resets the C<last_key> to C<undef>.
 Deletes the node associated with the key, and returns the value.  If
 the key cannot be found, returns C<undef>.
 
-L<Search fingers|About Search Fingers> may also be used:
+L<Search fingers|/"About Search Fingers"> may also be used:
 
   $value = $list->delete( $key, $finger );
 
@@ -976,8 +979,9 @@ Returns the number of nodes in the list.
 
   $list2 = $list1->copy;
 
-Makes a copy of a list.  The L<p>, L<max_level> and L<node class|_node_class>
-are copied, although the exact structure of node levels is not copied.
+Makes a copy of a list.  The L</"p">, L</"max_level"> and
+L<node class|/"_node_class"> are copied, although the exact structure of node
+levels is not copied.
 
 This is an autoloading method.
 
@@ -988,7 +992,7 @@ This is an autoloading method.
 Merges two lists.  If both lists share the same key, then the valie
 from C<$list1> will be used.
 
-Both lists should have the same L<node class|_node_class>.
+Both lists should have the same L<node class|/"_node_class">.
 
 This is an autoloading method.
 
@@ -999,9 +1003,9 @@ This is an autoloading method.
 Appends C<$list2> after C<$list1>.  The last key of C<$list1> must be less
 than the first key of C<$list2>.
 
-Both lists should have the same L<node class|_node_class>.
+Both lists should have the same L<node class|/"_node_class">.
 
-This method affects both lists.  The L<header> of the last node of
+This method affects both lists.  The L</"header"> of the last node of
 C<$list1> points to the first node of C<$list2>, so changes to one
 list may affect the other list.
 
@@ -1065,14 +1069,15 @@ developer use only.  These may change in future versions.
   ($node, $header_ref) = $list->_search( $key );
 
 Searches for the node with a key.  If the key is found, that node is
-returned along with a L<header>.  If the key is not found, the previous
+returned along with a L</"header">.  If the key is not found, the previous
 node from where the node would be if it existed is returned.
 
 Search fingers may also be specified:
 
   ($node, $header_ref) = $list->_search( $key, $finger );
 
-Note that the L<header> is actually a L<search finger|About Search Fingers>.
+Note that the L</"header"> is actually a
+L<search finger|/"About Search Fingers">.
 
 =item p
 
@@ -1092,7 +1097,7 @@ Returns the maximum level that C<_random_level> can generate.
 
 This is an internal function for generating a random level for new nodes.
 
-Levels are determined by the L<P|p> value.  The probability that a
+Levels are determined by the L<P|/"p"> value.  The probability that a
 node will have 1 level is I<P>; the probability that a node will have
 2 levels is I<P^2>; the probability that a node will have 3 levels is
 I<P^3>, et cetera.
@@ -1104,7 +1109,7 @@ The value will never be greater than C<max_level>.
   $node = $list->list;
 
 Returns the initial node in the list, which is a
-L<List::SkipList::Node> (See L<below|Node Methods>.)
+C<List::SkipList::Node> (See L<below|/"Node Methods">.)
 
 The key and value for this node are undefined.
 
@@ -1178,17 +1183,17 @@ without the need to deal with the node key being C<undef>.
 
 By default the comparison is a string comparison.  If you need a
 different form of comparison, use a
-L<custom node class|Customizing the Node Class>.
+L<custom node class|/"Customizing the Node Class">.
 
 =item validate_key
 
   if ($node->validate_key( $key )) { ... }
 
-Used by L<value> to validate that a key is valid.  Returns true if it
+Used by L</"value"> to validate that a key is valid.  Returns true if it
 is ok, false otherwise.
 
 By default this is a dummy routine.  Redefine it to validate keys if
-you need it when L<Customizing the Node Class>.
+you need it when L</"Customizing the Node Class">.
 
 =item value
 
@@ -1204,11 +1209,11 @@ When used with an argument, sets the node's value.
 
   if ($node->validate_value( $value )) { ... }
 
-Used by L<value> to validate that value is valid.  Returns true if it
+Used by L</"value"> to validate that value is valid.  Returns true if it
 is ok, false otherwise.
 
 By default this is a dummy routine.  Redefine it to validate values if
-you need it when L<Customizing the Node Class>.
+you need it when L</"Customizing the Node Class">.
 
 =item header
 
@@ -1307,40 +1312,6 @@ To use this, we say simply
 This skip list should work normally, except that the keys must be
 numbers.
 
-Another way to use customized nodes is to implement I<memoization> if
-key comparison is an expensive operation.  Instead of re-comparing a
-key with the same values, we save the results in a hash:
-
-  package MemoizedNode;
-
-  use Carp::Assert;
-
-  our @ISA = qw( List::SkipList::Node );
-
-  sub new {
-    my $class = shift;
-    my $self  = $class->SUPER::new( @_ );
-
-    $self->{MEMORY} = { };
-
-    bless $self, $class;
-  }
-
-  sub key_cmp {
-    my $self = shift;
-    assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
-
-    my $key = shift;
-
-    if (!exists $self->{MEMORY}->{$key}) {
-      $self->{MEMORY}->{$key} = $self->SUPER::key_cmp( $key );
-    }
-    return $self->{MEMORY}->{$key};
-  }
-
-Note that the above example is worthwhile if hashing the key is less
-expensive than comparing two keys.
-
 For another example of customized nodes, see L<Tie::RangeHash> version
 1.00_b1 or later.
 
@@ -1382,7 +1353,7 @@ See also the C<keys> method for generating a list of keys.
 =head2 Similarities to Tree Classes
 
 This module intentionally has a subset of the interface in the
-L<Tree:Base> and other tree-type data structure modules, since skip
+L<Tree::Base> and other tree-type data structure modules, since skip
 lists can be used in place of trees.
 
 Because pointers only point forward, there is no C<prev> method to
@@ -1401,8 +1372,6 @@ The following features may be added in future versions:
 
 =item Splitting lists
 
-=item Tie hashes to Skip Lists
-
 =back
 
 =head1 CAVEATS
@@ -1412,15 +1381,15 @@ This is a prototype module and may contain bugs.  However...
 Skip lists are non-deterministic.  Because of this, bugs in programs
 that use this module may be subtle and difficult to reproduce without
 many repeated attempts.  This is especially true if there are bugs in
-a L<custom node|Customizing the Node Class>.
+a L<custom node|/"Customizing the Node Class">.
 
 =head1 AUTHOR
 
-Robert Rothenberg <rrwo@cpan.org>
+Robert Rothenberg <rrwo[at]cpan.org>
 
 =head2 Acknowledgements
 
-Carl Shapiro <cshapiro@panix.com> for introduction to skip lists.
+Carl Shapiro <cshapiro[at]panix.com> for introduction to skip lists.
 
 =head2 Suggestions and Bug Reporting
 
@@ -1429,9 +1398,9 @@ L<http://rt.cpan.org> to submit bug reports.
 
 =head1 LICENSE
 
-Copyright (c) 2003 Robert Rothenberg. All rights reserved.
-This program is free software; you can redistribute it and/or
-modify it under the same terms as Perl itself.
+Copyright (c) 2003-2004 Robert Rothenberg. All rights reserved.  This
+program is free software; you can redistribute it and/or modify it
+under the same terms as Perl itself.
 
 =head1 SEE ALSO
 
