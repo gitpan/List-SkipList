@@ -29,6 +29,10 @@ DESCRIPTION
 REVISION HISTORY
     Changes since v0.13:
 
+    0.21  Wed Nov 26 2003
+	- bug fix: first_key method returns a proper finger
+	- added documentation and tests about memoization
+
     0.20  Wed Nov 26 2003
 	- if no last_key specified for next_key, it returns first_key
 	- search fingers added

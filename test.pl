@@ -26,14 +26,40 @@ sub key_cmp {
   return ($left <=> $right);
 }
 
+package MemoizedNode;
+
+use Carp::Assert;
+
+our @ISA = qw( List::SkipList::Node );
+
+sub new {
+    my $class = shift;
+    my $self  = $class->SUPER::new( @_ );
+
+    $self->{MEMORY} = { };
+
+    bless $self, $class;
+}
+
+sub key_cmp {
+  my $self = shift;
+  assert( UNIVERSAL::isa($self, "List::SkipList::Node") ), if DEBUG;
+
+  my $key = shift;
+
+  if (!exists $self->{MEMORY}->{$key}) {
+    $self->{MEMORY}->{$key} = $self->SUPER::key_cmp( $key );
+  }
+
+  return $self->{MEMORY}->{$key};
+}
 
 package main;
 
 use Test;
-BEGIN { plan tests => 295 };
-use List::SkipList 0.20;
+BEGIN { plan tests => 330 };
+use List::SkipList 0.21;
 ok(1); # If we made it this far, we're ok.
-
 
 my $n = new List::SkipList::Node( key => 123, value => 987 );
 ok( ref($n) eq "List::SkipList::Node" );
@@ -183,14 +209,42 @@ while (my $next = $d->next_key($last)) {
 
 # Same tests, with fingers
 
-($last, $finger) = $d->first_key;
-ok($last == 1);
-ok(!defined $finger);
+{
+  my $size = $d->size;
+  ok($size != 0);
 
-while (my ($next, $finger) = $d->next_key($last)) {
-  ok( $next == ($last+1) );
-  ok( defined $finger );
-  $last = $next;
+  ($last, $finger) = $d->first_key;
+  ok($last == 1);
+  ok(defined $finger);
+
+  my $count = 1;
+
+  while (my ($next, $finger) = $d->next_key($last)) {
+    $count++;
+    ok( $next == ($last+1) );
+    ok( defined $finger );
+    $last = $next;
+  }
+
+  ok($count == $size);
 }
 
-# $d->debug;
+# Testing memoized node example
+
+my $e = new List::SkipList( node_class => 'MemoizedNode' );
+ok( ref($e) eq "List::SkipList");
+
+foreach my $key (keys %TESTDATA1) {
+  $value = $TESTDATA{ $key };
+
+  ok(! $e->exists($key) );
+
+  $e->insert($key, $value );
+
+  ok( $e->exists($key) );
+  ok( $e->find($key) == $value );
+
+  $e->insert($key, $value+1 );
+  ok( $e->find($key) == ($value+1) );
+}
+

@@ -140,7 +140,7 @@ use 5.006;
 use strict;
 use warnings;
 
-our $VERSION = '0.20';
+our $VERSION = '0.21';
 
 use Carp;
 use Carp::Assert;
@@ -468,7 +468,7 @@ sub first_key {
   my $list = $self->list;
   if (defined $list->forward(0)) {
     return (wantarray) ?
-      ($list->forward(0)->key, undef) : $list->forward(0)->key;
+      ($list->forward(0)->key, $list->header) : $list->forward(0)->key;
   } else {
     return;
   }
@@ -913,7 +913,7 @@ numeric instead of string comparisons:
 
   sub key_cmp {
     my $self = shift;
-    assert( UNIVERSAL::isa($self, "List::SkipList::Node") ), if DEBUG;
+    assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
 
     my $left  = $self->key;  # node key
     my $right = shift;       # value to compare the node key with
@@ -926,7 +926,7 @@ numeric instead of string comparisons:
 
   sub validate_key {
     my $self = shift;
-    assert( UNIVERSAL::isa($self, "List::SkipList::Node") ), if DEBUG;
+    assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
 
     my $key = shift;
     return ($key =~ s/\-?\d+(\.\d+)?$/); # test if key is numeric
@@ -936,8 +936,43 @@ To use this, we say simply
 
   $number_list = new List::SkipList( node_class => 'NumericNode' );
 
-The skip list should work normally, except that the keys must be
+This skip list should work normally, except that the keys must be
 numbers.
+
+Another way to use customized nodes is to implement I<memoization> if
+key comparison is an expensive operation.  Instead of re-comparing a
+key with the same values, we save the results in a hash:
+
+  package MemoizedNode;
+
+  use Carp::Assert;
+
+  our @ISA = qw( List::SkipList::Node );
+
+  sub new {
+    my $class = shift;
+    my $self  = $class->SUPER::new( @_ );
+
+    $self->{MEMORY} = { };
+
+    bless $self, $class;
+  }
+
+  sub key_cmp {
+    my $self = shift;
+    assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
+
+    my $key = shift;
+
+    if (!exists $self->{MEMORY}->{$key}) {
+      $self->{MEMORY}->{$key} = $self->SUPER::key_cmp( $key );
+    }
+    return $self->{MEMORY}->{$key};
+  }
+
+
+Note that the above example is worthwhile if hashing the key is less
+expensive than comparing two keys.
 
 For another example of customized nodes, see L<Tie::RangeHash> version
 1.00_b1 or later.
@@ -971,11 +1006,15 @@ The following features may be added in future versions:
 
 =over
 
-=item Merging Lists
+=item Merging lists
 
-=item Splitting Lists
+=item Accessing list nodes by index number as well as key
 
-=item Cloning
+=item Splitting lists
+
+=item Cloning or copying lists
+
+=item Autoloading lesser-used methods
 
 =back
 
