@@ -5,6 +5,7 @@ WriteMakefile
           'NAME' => 'List::SkipList',
           'VERSION_FROM' => 'lib/List/SkipList.pm',
           'PREREQ_PM' => {
+                           'Test::More' => '0',
                            'enum' => '1.016'
                          },
           'INSTALLDIRS' => 'site',

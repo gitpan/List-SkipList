@@ -8,7 +8,7 @@ use warnings;
 # no Carp::Assert qw(assert DEBUG);
 
 our $VERSION
- = '1.36';
+ = '1.40';
 
 use enum qw( HEADER=0 KEY VALUE );
 
@@ -29,7 +29,7 @@ sub header {
 #   assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
 #   assert( (!$hdr) || ref($hdr) eq 'ARRAY' ), if DEBUG;
 
-  ($hdr) ? ( $self->[HEADER] = $hdr ) : $self->[HEADER];
+  $self->[HEADER];
 }
 
 # sub prev {
@@ -57,7 +57,7 @@ sub key {
 #   assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
 #   assert( (@_==1) || $self->validate_key( $key ) ), if DEBUG;
 
-  (@_ > 1) ? ( $self->[KEY] = $key ) : $self->[KEY];
+  $self->[KEY];
 }
 
 sub key_cmp {
@@ -125,7 +125,7 @@ use warnings;
 # use Carp::Assert qw( assert DEBUG );
 
 our $VERSION
- = '0.04';
+ = '0.05';
 
 our @ISA = qw( List::SkipList::Node );
 
@@ -143,6 +143,16 @@ sub key_cmp {
   1;   # Note that the header returns "1" instead of "-1"!
 }
 
+sub key {
+#    assert( 0 ), if DEBUG;
+  return;
+}
+
+sub value {
+#    assert( 0 ), if DEBUG;
+  return;
+}
+
 1;
 
 package List::SkipList;
@@ -151,19 +161,34 @@ use 5.006;
 use strict;
 use warnings;
 
-our $VERSION = '0.65';
+our $VERSION = '0.70_01';
+$VERSION = eval $VERSION;
+
 
 use AutoLoader qw( AUTOLOAD );
 use Carp qw( carp croak );
 # no Carp::Assert qw(assert DEBUG);
 
+use constant MIN_LEVEL       =>  2;
 use constant MAX_LEVEL       => 32;
 use constant DEF_P           => 0.25;
 
 use constant BASE_NODE_CLASS => 'List::SkipList::Node';
 
-my $NULL; INIT { $NULL = new List::SkipList::Null(); }
+our $NULL;
 
+# We use Exporter instead of something like Exporter::Lite because
+# Carp uses it.
+
+require Exporter;
+
+our @EXPORT    = ( );
+our @EXPORT_OK = ( );
+
+sub import {
+ $NULL = new List::SkipList::Null();
+ goto &Exporter::import;
+}
 
 sub new {
   no integer;
@@ -232,7 +257,7 @@ sub clear {
   $self->{SIZE}     = 0;
   $self->{SIZE_THRESHOLD} = 2;
   $self->{LAST_SIZE_TH}   = 0;
-  $self->{SIZE_LEVEL}     = 2;
+  $self->{SIZE_LEVEL}     = MIN_LEVEL;
 
   my $hdr = [ (undef) x $self->{SIZE_LEVEL} ];
 
@@ -251,37 +276,47 @@ sub _set_max_level {
   my ($self, $level) = @_;
 #   assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
 #   assert( ($level>1) ), if DEBUG;
+  if ($level > MAX_LEVEL) {
+    croak "Cannot set max_level greater than ", MAX_LEVEL;
+  } elsif ($level < MIN_LEVEL) {
+    croak "Cannot set max_level less than ", MIN_LEVEL;
+  } elsif ((defined $self->list) && ($level < $self->list->level)) {
+    croak "Current level exceeds specified level";
+  }
   $self->{MAXLEVEL} = $level;
 }
 
 sub max_level {
-  my ($self) = @_;
+  my ($self, $level) = @_;
 #   assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
-  $self->{MAXLEVEL};
+  if (defined $level) {
+    $self->_set_max_level($level);
+  } else {
+    $self->{MAXLEVEL};
+  }
 }
 
 sub _set_p {
   no integer;
 
   my ($self, $p) = @_;
-#   assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
-  
+
+#   assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;  
+
+  unless ( ($p>0) && ($p<1) ) {
+    croak "Unvalid value for P (must be between 0 and 1)";
+  }
+
 #   assert( ($p>0) && ($p<1) ), if DEBUG;
 
   $self->{P} = $p;
 
-  # Because configuration is via hash, we may not set a new max_level
-  # before setting P, so we set to the standard MAX_LEVEL if it is
-  # greater.  Possible bug is if max_level is greater than MAX_LEVEL
-  # but is set after P.
-
   my $n     = 1;
   my $level = 0;
-  my $max   = (MAX_LEVEL > $self->max_level) ? MAX_LEVEL : $self->max_level;
 
   $self->{P_LEVELS} = [ ]; 
 
-  while ($level <= $max) {
+  while ($level <= MAX_LEVEL) {
     # TODO: add assertion that [level]<[level-1]
     $self->{P_LEVELS}->[$level++] = $n;
     $n *= $p;
@@ -291,9 +326,14 @@ sub _set_p {
 sub p {
   no integer;
 
-  my ($self) = @_;
+  my ($self, $p) = @_;
 #   assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
-  $self->{P};
+
+  if (defined $p) {
+    $self->_set_p($p);
+  } else {
+    $self->{P};
+  }
 }
 
 sub size {
@@ -308,26 +348,12 @@ sub list {
   $self->{LIST};
 }
 
-sub level {
-  my ($self) = @_;
-#   assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
-  $self->{LIST}->level;
-}
 
-sub null {
-#   my ($self) = @_;
-#   assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
-  $NULL;
-}
-
-sub _new_node_level { # previously _random_level
-  no integer;
+sub _adjust_level_threshold {
+  use integer;
 
   my ($self) = @_;
 #   assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
-
-  # Note: we call $self->{MAXLEVEL} instead of $self->max_level for
-  # very minor speed improvement.
 
   if ($self->{SIZE} >= $self->{SIZE_THRESHOLD}) {
     $self->{LAST_SIZE_TH}    = $self->{SIZE_THRESHOLD};
@@ -336,16 +362,25 @@ sub _new_node_level { # previously _random_level
   } elsif ($self->{SIZE} < $self->{LAST_SIZE_TH}) {
     $self->{SIZE_THRESHOLD}  = $self->{LAST_SIZE_TH};
     $self->{LAST_SIZE_TH}    = $self->{LAST_SIZE_TH} / 2;
-    $self->{SIZE_LEVEL}--;
+    $self->{SIZE_LEVEL}--, if ($self->{SIZE_LEVEL} > MIN_LEVEL);
 #     assert( $self->{LAST_SIZE_TH} == int($self->{LAST_SIZE_TH}) ), if DEBUG;
 #     assert( $self->{SIZE_LEVEL} >= 1 ), if DEBUG;
   }
+}
+
+sub _new_node_level { # previously _random_level
+  no integer;
+
+  my ($self) = @_;
+#   assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
 
   my $n     = CORE::rand();
   my $level = 1;
 
-  do { } while (($n < $self->{P_LEVELS}->[$level]) &&
-	 ($level++ < $self->{SIZE_LEVEL}));
+  while (($n < $self->{P_LEVELS}->[$level]) &&
+	 ($level < $self->{SIZE_LEVEL})) {
+    $level++;
+  }
 
 #   assert( ($level >= 1) && ($level <= $self->{SIZE_LEVEL}) ), if DEBUG;
   $level;
@@ -391,7 +426,7 @@ sub _search_with_finger {
     $finger->[$level] = $node;
   } while ((--$level>=0) && ($cmp));
 
-  $node = $fwd, unless ($cmp);
+  $node = $fwd; #, unless ($cmp);
   
   #   assert( UNIVERSAL::isa($node, BASE_NODE_CLASS) ), if DEBUG;
 
@@ -431,7 +466,7 @@ sub _search {
     }
   } while ((--$level>=0) && ($cmp));
 
-  $node = $fwd, unless ($cmp);
+  $node = $fwd; # , unless ($cmp); # Devel::Cover says it's never false
 
   #   assert( UNIVERSAL::isa($node, BASE_NODE_CLASS) ), if DEBUG;
 
@@ -489,6 +524,7 @@ sub insert {
     $self->{LASTNODE} = $node, unless ($node_hdr->[0]);
 
     $self->{SIZE}++;
+    $self->_adjust_level_threshold;
   } else {
     $node->value($value);
   }
@@ -546,6 +582,7 @@ sub delete {
     $self->{LASTINSRT} = undef;
 
     $self->{SIZE} --;
+    $self->_adjust_level_threshold;
 
     # We shouldn't need to "undef $x" here. The Garbage Collector
     # should hanldle that.
@@ -652,9 +689,8 @@ sub next_key {
     my ($list, $update_ref, $cmp) =
       $self->_search_with_finger($last_key, $finger);
 
-    my $fwd  = $list->header()->[0];
- 
     if ($cmp == 0) {
+      my $fwd  = $list->header()->[0];
       if (defined $fwd) {
 	$self->last_key($fwd->key, $update_ref, $fwd->value);
       } else {
@@ -688,6 +724,12 @@ BEGIN
 1;
 
 __END__
+
+sub level {
+  my $self = shift;
+#   assert( UNIVERSAL::isa($self, __PACKAGE__) ), if DEBUG;
+  return $self->list->level;
+}
 
 sub _first_node { # actually this is the second node
   my $self = shift;
@@ -872,15 +914,15 @@ sub append {
 
 #    assert( $node->key_cmp( $next->key ) < 0 ), if DEBUG;
 
-    if ($list1->level > $list2->level) {
+    if ($list1->list->level > $list2->list->level) {
 
-      if ($list1->level < $list1->max_level) {
+      if ($list1->list->level < $list1->max_level) {
 
-	my $i = $list1->level;
+	my $i = $list1->list->level;
 	while (!defined $list1->list->header()->[$i]) { $i--; }
 	$list1->list->header()->[$i+1] = $next;
       } else {
-	my $i = $list1->level-1;
+	my $i = $list1->list->level-1;
 	my $x = $list1->list->header()->[$i];
 	while (defined $x->header()->[$i]) {
 	  $x = $x->header()->[$i];
@@ -893,7 +935,7 @@ sub append {
       for (my $i=0; $i<$node->level; $i++) {
 	$node->header()->[$i] = $next;
       }
-      for (my $i=$list1->level; $i<$list2->level; $i++) {
+      for (my $i=$list1->list->level; $i<$list2->list->level; $i++) {
 	$list1->list->header()->[$i] = $next;
       }
     }
@@ -1318,6 +1360,14 @@ Returns the I<P> value.  Intended for internal use only.
 
 Returns the maximum level that L</_new_node_level> can generate.
 
+  eval {
+    $list->max_level( $level );
+  };
+
+Changes the maximum level.  If level is less than L</MIN_LEVEL>, or
+greater than L</MAX_LEVEL> or the current list L</level>, this will fail
+(hence the need for setting it in an C<eval> block).
+
 =item _new_node_level
 
   $level = $list->_new_node_level;
@@ -1341,14 +1391,6 @@ Returns the initial node in the list, which is a
 C<List::SkipList::Node> (See L<below|/"Node Methods">.)
 
 The key and value for this node are undefined.
-
-=item level
-
-  $level = $list->level;
-
-Returns the number of levels in the list.  It is the same as
-
-  $level = $list->list->level;
 
 =item _first_node
 
@@ -1404,11 +1446,10 @@ convention.
 
   $key = $node->key;
 
-Returns the node's key.
+Returns the key.
 
-  $node->key( $key );
-
-When used with an argument, sets the node's key.
+Note that as of version 0.70, this method is read-only.  We should not
+change the key once a node has been added to the list.
 
 =item key_cmp
 
@@ -1462,13 +1503,9 @@ Returns the forward list array of the node. This is an array of nodes
 which point to the node returned, where each index in the array refers
 to the level.
 
-  $node->header( $header_ref );
-
-When used with an argument, sets the forward list.  It does not check
-if list elements are of the correct type.
-
-Note that the interface has changed. This method only accepts or
-returns header references.
+Note that as of version 0.70, this method is read-only.  Since it only
+returns header references (as of version 0.50), that reference can be
+used to modify forward pointers.
 
 =item level
 

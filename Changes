@@ -1,6 +1,33 @@
 Revision history for Perl extension List::SkipList. (Changes which may
 not be backwards compatible are marked with an asterisk '*'.)
 
+0.70_01 Sun Jun  6 2004 
+	- tests rewritten (work in progress)
+	- fixed bug with next_key checking node when key was deleted
+	- uses Test::More for tests
+	- fixed "Too late to run INIT block" error with Test::More
+	  use_ok, $NULL is now set in import() method
+	- fixed bug where level sometimes exceeded user-set max level
+	- P and max_level can now be set dynamically
+	- added tests for max_level and p
+	- checks for error when setting P
+	- fixed bug with definition of List::SkipList::Null
+	- $NULL is now an 'our' variable and accessible from outside
+	- level method was changed to autoload, since it was redundant
+	- minor optimization of _search_with_finger and _search
+	* header method in Node is read-only - it returns a pointer
+	  which can be used to change values anyway
+	* key method in Node is read-only - it should not be
+          changed once it is inside a list
+	- added _adjust_level_threshold method from code that was in
+	  _new_node_level to adjust SIZE_THRESHOLD/SIZE_LEVEL
+	- _adjust_level_threshold is called upon inserts and deletes
+	- SIZE_LEVEL does not decrease under MIN_LEVEL
+	* removed null() method - it was never used
+	* max_level cannot be greater than 32 (cleaner code)
+	- increased coverage of "heavy" test script
+	- minor updates to all test scripts
+
 0.65 Thu June  3 2004
 	- updated README
 

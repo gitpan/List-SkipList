@@ -1,10 +1,11 @@
+#-*- mode: perl;-*-
+
 package main;
 
 use constant SIZE => 5;
 
-use Test;
-BEGIN { plan tests => 6+(4*SIZE) };
-use List::SkipList 0.51;
+use Test::More tests => 6+(4*SIZE);
+use List::SkipList 0.70;
 ok(1);
 
 my $List = new List::SkipList;

@@ -9,8 +9,10 @@ t/01-SkipList.t
 t/02-SkipList-tie.t
 t/02-SkipList-merge_append.t
 t/03-SkipList-next_key.t
+t/04-SkipList-max_level.t
+t/04-SkipList-p.t
 t/10-SkipList-heavy.t
-etc/README
+etc/Benchmark.README
 etc/Benchmark.txt
 etc/make_bench.pl
 etc/parse-out.pl
