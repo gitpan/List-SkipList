@@ -6,6 +6,10 @@ use warnings;
 use Carp;
 use Carp::Assert;
 
+# List::SkipList::Node version is 0.03 - we cannot define it here
+# because MakeMaker gets confused and pulls the first version
+# definition string it sees
+
 sub new {
   my $class = shift;
   my $self  = {
@@ -77,12 +81,20 @@ sub forward
 
   }
 
+sub validate_key {
+#    my $self = shift;
+#    assert( UNIVERSAL::isa($self, "List::SkipList::Node") ), if DEBUG;
+  return 1;
+}
+
 sub key {
   my $self = shift;
   assert( UNIVERSAL::isa($self, "List::SkipList::Node") ), if DEBUG;
 
   if (@_) {
-    $self->{KEY} = shift;
+    my $key = shift;
+    assert( $self->validate_key( $key ) ), if DEBUG;
+    $self->{KEY} = $key;
     carp "Extra arguments ignored", if (@_);
   } else {
     return $self->{KEY};
@@ -101,12 +113,20 @@ sub key_cmp {
   return ($left cmp $right);
 }
 
+sub validate_value {
+#    my $self = shift;
+#    assert( UNIVERSAL::isa($self, "List::SkipList::Node") ), if DEBUG;
+  return 1;
+}
+
 sub value {
   my $self = shift;
   assert( UNIVERSAL::isa($self, "List::SkipList::Node") ), if DEBUG;
 
   if (@_) {
-    $self->{VALUE} = shift;
+    my $value = shift;
+    assert( $self->validate_value( $value ) ), if DEBUG;
+    $self->{VALUE} = $value;
     carp "Extra arguments ignored", if (@_);
   } else {
     return $self->{VALUE};
@@ -119,7 +139,7 @@ use 5.006;
 use strict;
 use warnings;
 
-our $VERSION = '0.11';
+our $VERSION = '0.12';
 
 use Carp;
 use Carp::Assert;
@@ -444,7 +464,6 @@ sub next_key {
 __END__
 
 
-
 sub debug {
 
   my $self = shift;
@@ -464,7 +483,6 @@ sub debug {
   }
 
 }
-
 
 =head1 NAME
 
@@ -512,8 +530,8 @@ list, like so:
   1 +--> +--> +--> +--> +--> +--> +--> +--> +--> +--> +--> +
          A    B    C    D    E    F    G    H    I    J   NIL
 
-A search would start at the top level: if the link exceeds the target
-key, then it descends a level.
+A search would start at the top level: if the link to the right
+exceeds the target key, then it descends a level.
 
 Skip lists generally perform as well as balanced trees for searching
 but do not have the overhead with respect to inserting new items.
@@ -715,6 +733,16 @@ By default the comparison is a string comparison.  If you need a
 different form of comparison, use a
 L<custom node class|Customizing the Node Class>.
 
+=item validate_key
+
+  if ($node->validate_key( $key )) { ... }
+
+Used by L<value> to validate that a key is valid.  Returns true if it
+is ok, false otherwise.
+
+By default this is a dummy routine.  Redefine it to validate keys if
+you need it when L<Customizing the Node Class>.
+
 =item value
 
   $value = $node->value;
@@ -724,6 +752,16 @@ Returns the node's value.
   $node->value( $value );
 
 When used with an argument, sets the node's value.
+
+=item validate_value
+
+  if ($node->validate_value( $value )) { ... }
+
+Used by L<value> to validate that value is valid.  Returns true if it
+is ok, false otherwise.
+
+By default this is a dummy routine.  Redefine it to validate values if
+you need it when L<Customizing the Node Class>.
 
 =item header
 
@@ -793,12 +831,20 @@ numeric instead of string comparisons:
     return ($left <=> $right);
   }
 
+  sub validate_key {
+    my $self = shift;
+    assert( UNIVERSAL::isa($self, "List::SkipList::Node") ), if DEBUG;
+
+    my $key = shift;
+    return ($key =~ s/\-?\d+(\.\d+)?$/); # test if key is numeric
+  }
+
 To use this, we say simply
 
   $number_list = new List::SkipList( node_class => 'NumericNode' );
 
-The list should work normally.
-  
+The skip list should work normally, except that the keys must be
+numbers.
 
 =head1 TODO
 

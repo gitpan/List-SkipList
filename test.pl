@@ -4,6 +4,14 @@ use Carp::Assert;
 
 our @ISA = qw( List::SkipList::Node );
 
+sub validate_key {
+  my $self = shift;
+  assert( UNIVERSAL::isa($self, "List::SkipList::Node") ), if DEBUG;
+
+  my $key = shift;
+  return ($key =~ /^\d+$/); # make sure key is simple natural number
+}
+
 sub key_cmp {
   my $self = shift;
   assert( UNIVERSAL::isa($self, "List::SkipList::Node") ), if DEBUG;
@@ -23,7 +31,7 @@ package main;
 
 use Test;
 BEGIN { plan tests => 173 };
-use List::SkipList 0.10;
+use List::SkipList 0.12;
 ok(1); # If we made it this far, we're ok.
 
 
@@ -146,6 +154,9 @@ foreach my $key (reverse sort keys %TESTDATA1) {
 my $n = new NumericNode();
 ok( ref($n) eq "NumericNode" );
 ok( UNIVERSAL::isa($n, "List::SkipList::Node") );
+ok( $n->validate_key(1) );
+ok(!$n->validate_key('a'));
+ok( $n->validate_value( undef ) );
 
 my $d = new List::SkipList( node_class => 'NumericNode' );
 ok( ref($d) eq "List::SkipList");
