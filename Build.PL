@@ -10,6 +10,7 @@ my $build = Module::Build->new
      },
      recommends => {
      },
+     autosplit => 'lib/List/SkipList.pm',
      create_makefile_pl => 'traditional',
      dist_author        => 'Robert Rothenberg <rrwo at cpan.org>',
 );

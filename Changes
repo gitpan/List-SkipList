@@ -1,6 +1,9 @@
 Revision history for Perl extension List::SkipList. (Changes which may
 not be backwards compatible are marked with an asterisk '*'.)
 
+0.42  Sat Mar 20 2004
+	- fixed bug with Build.PL not autospliting files
+
 0.41  Fri Mar 19 2004
 	* List::SkipList::Node is now array-based rather than hash-based
 	  to improve speed.
