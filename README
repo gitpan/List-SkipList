@@ -1,0 +1,35 @@
+NAME
+    List::SkipList - Perl implementation of skip lists
+
+SYNOPSIS
+      my $list = new List::SkipList();
+
+      $list->insert( 'key1', 'value' );
+      $list->insert( 'key2', 'another value' );
+
+      $value = $list->find('key2');
+
+      $list->delete('key1');
+
+DESCRIPTION
+    This is a prototype implementation of skip lists in Perl. Skip lists are
+    similar to linked lists, except that they have random links at various
+    levels that allow searches to skip over sections of the list. They
+    generally perform as well as balanced trees for searching but do not
+    have the overhead with respect to inserting new items.
+
+    More detailed information is available in the module documentation.
+
+AUTHOR
+    Robert Rothenberg <rrwo@cpan.org>
+
+LICENSE
+    Copyright (c) 2003 Robert Rothenberg. All rights reserved. This program
+    is free software; you can redistribute it and/or modify it under the
+    same terms as Perl itself.
+
+SEE ALSO
+    See the article *A Skip List Cookbook* (William Pugh, 1989), or similar
+    ones by the author at http://www.cs.umd.edu/~pugh/ which discuss skip
+    lists.
+

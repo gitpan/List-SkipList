@@ -1,0 +1,9 @@
+Revision history for Perl extension List::SkipList.
+
+0.01  Fri Nov 14 00:50:00 2003
+	- original version; created by h2xs 1.21 with options
+		-X -n List::SkipList -v 0.01
+
+0.02  Fri Nov 14 01:08:00 2003
+	- incorporated experimental code into module
+	- began writing initial test script
